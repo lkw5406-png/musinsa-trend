@@ -31,6 +31,10 @@ CHART_GROUPS = [
     ("detail", "디테일"),
 ]
 CHART_ROWS = 8
+SCOPE_TEXT = {
+    "overall": "무신사 남성·여성 전체 랭킹(최근 1일)에서 의류만 상위 300개 · 상의/아우터/바지/원피스·스커트",
+    "category": "무신사 전체 랭킹(최근 1일) · 상의/아우터/바지/원피스·스커트 · 카테고리별 1~200위 (9/24 방식)",
+}
 
 CSS = """
 :root {
@@ -243,7 +247,7 @@ def share_chart(title: str, group: dict, trend_label: str, has_trend: bool) -> s
 def product_table(title: str, products: list[dict], extra_col: str | None = None, empty: str = "") -> str:
     if not products:
         return f'<div><h3>{e(title)}</h3><p class="empty">{e(empty or "해당 상품이 없어요.")}</p></div>'
-    head = "<th class='num'>순위</th><th></th><th>상품</th><th>카테고리</th><th class='num'>가격</th>"
+    head = "<th class='num'>전체 순위</th><th></th><th>상품</th><th>카테고리</th><th class='num'>가격</th>"
     if extra_col:
         head += f"<th class='num'>{e(extra_col)}</th>"
     body = []
@@ -324,7 +328,7 @@ def render(a: dict, dates: list[str] | None, base: str) -> str:
   <header>
     <div>
       <h1>무신사 의류 랭킹 트렌드 · {e(a['date'])}</h1>
-      <p>무신사 전체 랭킹(최근 1일) · 상의/아우터/바지/원피스·스커트 · 카테고리별 1~200위</p>
+      <p>{e(SCOPE_TEXT.get(a.get('scope', 'category')))}</p>
       <p class="note">{e(history_note)} 상품 상세정보(핏·소재·두께) 반영 {a['detail_coverage']:.0f}%</p>
     </div>
     {date_picker}
@@ -333,7 +337,8 @@ def render(a: dict, dates: list[str] | None, base: str) -> str:
   {panels}
   <footer>
     <p>매일 오전 10시 기준 무신사 전체 랭킹(최근 1일)을 모아 날짜별로 쌓아요. 남성·여성은 무신사 성별 랭킹 그대로예요.
-    비중은 순위가 높을수록 크게 반영(1위=1, 200위≈0)하고, 속성을 파악한 상품끼리 비교해요.
+    비중은 순위가 높을수록 크게 반영(의류 중 1위=1, 300위≈0)하고, 속성을 파악한 상품끼리 비교해요.
+    '전체 순위'는 신발·가방 등을 포함한 무신사 전체 랭킹 순위예요.
     핏·두께는 판매자가 입력한 값, 소재는 상품정보제공고시의 겉감 주원료, 실루엣·원단은 상품명과 상세 설명의 키워드로 분류해요.</p>
   </footer>
 </div>

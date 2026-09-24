@@ -26,6 +26,7 @@ DETAIL_URL = "https://goods-detail.musinsa.com/api2/goods/{id}"
 REQUEST_INTERVAL_SEC = 2
 SAVE_EVERY = 25
 DESC_CHARS = 600
+CLOTHING_CODES = {"001", "002", "003", "100"}  # 상의, 아우터, 바지, 원피스/스커트 (스포츠/레저 017 등은 제외)
 LOCK_PATH = TMP_DIR / "product_details.lock"
 LOCK_STALE_SEC = 600  # 25개 저장마다 갱신(약 2분). 10분 넘게 안 바뀌면 멈춘 것으로 보고 새로 시작 허용
 
@@ -97,21 +98,38 @@ def main_fiber(material_text: str) -> tuple[str | None, int | None]:
     return None, None
 
 
+def category1(detail: dict | None) -> str:
+    """무신사 대분류 코드 (001 상의, 002 아우터, 003 바지, 100 원피스/스커트, 103 신발 …). 모르면 ''."""
+    if not detail or detail.get("missing"):
+        return ""
+    return detail.get("category1_code") or str(detail.get("category2_code", ""))[:3]
+
+
+def is_clothing(detail: dict | None) -> bool:
+    return category1(detail) in CLOTHING_CODES
+
+
 def fetch_detail(product_id: str) -> dict:
     goods = get_json(DETAIL_URL.format(id=product_id), allow_404=True)
     time.sleep(REQUEST_INTERVAL_SEC)
     if not goods or not goods.get("data"):
         return {"missing": True}
-    essential = get_json(DETAIL_URL.format(id=product_id) + "/essential", allow_404=True)
-    time.sleep(REQUEST_INTERVAL_SEC)
 
     d = goods["data"]
+    cat = d.get("category") or {}
     out: dict = {
-        "category2": (d.get("category") or {}).get("categoryDepth2Name", ""),
-        "category2_code": (d.get("category") or {}).get("categoryDepth2Code", ""),
+        "category1_code": cat.get("categoryDepth1Code", ""),
+        "category1": cat.get("categoryDepth1Name", ""),
+        "category2": cat.get("categoryDepth2Name", ""),
+        "category2_code": cat.get("categoryDepth2Code", ""),
         "sex": d.get("sex") or [],
-        "desc": clean_text(d.get("goodsContents", ""))[:DESC_CHARS],
     }
+    if out["category1_code"] not in CLOTHING_CODES:
+        return out  # 신발·가방·뷰티 등: 의류인지 가리는 데만 쓰므로 여기까지 (요청 1번)
+
+    essential = get_json(DETAIL_URL.format(id=product_id) + "/essential", allow_404=True)
+    time.sleep(REQUEST_INTERVAL_SEC)
+    out["desc"] = clean_text(d.get("goodsContents", ""))[:DESC_CHARS]
     for m in (d.get("goodsMaterial") or {}).get("materials") or []:
         key = MATERIAL_FIELDS.get(m.get("name"))
         if key:
@@ -148,6 +166,22 @@ def _another_run_active() -> bool:
 def _touch_lock() -> None:
     LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     LOCK_PATH.write_text(str(time.time()), encoding="utf-8")
+
+
+def ensure_details(product_ids: list[str], details: dict, date: str) -> int:
+    """아직 없는 상품만 상세정보를 받아 details에 채운다 (랭킹 수집 중 의류 판별용). 받은 개수를 돌려준다."""
+    done = 0
+    for pid in product_ids:
+        if pid in details:
+            continue
+        info = fetch_detail(pid)
+        info["fetched"] = date
+        details[pid] = info
+        done += 1
+        if done % SAVE_EVERY == 0:
+            save_details(details)
+    save_details(details)
+    return done
 
 
 def update_details(date: str, limit: int | None = None) -> int:

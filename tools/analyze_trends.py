@@ -5,7 +5,7 @@
 
 분석 기준
 - 성별: 무신사 남성 랭킹 / 여성 랭킹 그대로. (두 랭킹에 모두 오른 상품은 양쪽에 다 반영)
-- 비중(share): 순위가 높을수록 큰 가중치(1위=1.0, 200위≈0)로 속성별 비중을 계산.
+- 비중(share): 순위가 높을수록 큰 가중치(1위=1.0, 300위≈0)로 속성별 비중을 계산.
 - 추세: 오늘 비중 − 어제 비중(%p), 오늘 비중 − 최근 7일 평균(%p). 기록이 쌓이면 표시.
   첫날은 추세 없이 '많이 팔리는 속성'만 보여준다.
 
@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from classify_attributes import GROUP_LABELS, GROUPS, classify
 from common import DETAILS_PATH, HISTORY_DIR, TMP_DIR, today_kst
 
-MAX_RANK = 200
+MAX_RANK = 300  # musinsa_fetch.py와 같게
 GENDERS = {"M": "남성", "F": "여성"}
 HEADLINE_GROUPS = ["item_type", "fit", "silhouette", "fiber", "color"]
 MIN_COUNT = 5          # 이보다 적게 등장한 속성은 우연일 수 있어 순위표에서 뺌
@@ -52,8 +52,9 @@ def build_products(rows: list[dict], details: dict) -> dict[str, list[dict]]:
         p = {k: r[k] for k in ("product_id", "brand", "product_name", "category_code", "category_name",
                                "final_price", "original_price", "discount_rate", "sales_label",
                                "image_url", "product_url")}
-        p["rank"] = int(r["rank"])
-        p["weight"] = (MAX_RANK + 1 - p["rank"]) / MAX_RANK
+        p["rank"] = int(r["rank"])  # 무신사 전체 랭킹 순위 (비의류 포함 순위)
+        p["clothing_rank"] = int(r.get("clothing_rank") or r["rank"])  # 의류끼리 순위 1~300
+        p["weight"] = (MAX_RANK + 1 - p["clothing_rank"]) / MAX_RANK
         p.update(classify(r["product_name"], r["category_code"], r["category_name"], details.get(r["product_id"])))
         out[gender].append(p)
     for products in out.values():
@@ -84,14 +85,20 @@ def previous_dates(date: str, days: int) -> list[str]:
     return [(d - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(1, days + 1)]
 
 
+def data_scope(rows: list[dict]) -> str:
+    """'overall' = 전체 랭킹에서 의류만 300개 (2026-09-25~), 'category' = 카테고리별 랭킹 (2026-09-24)."""
+    return "overall" if rows and "clothing_rank" in rows[0] else "category"
+
+
 def product_brief(p: dict) -> dict:
     return {k: p[k] for k in ("product_id", "brand", "product_name", "category_name", "item_type", "rank",
-                              "final_price", "discount_rate", "sales_label", "image_url", "product_url")} | {
+                              "clothing_rank", "final_price", "discount_rate", "sales_label", "image_url",
+                              "product_url")} | {
         "attrs": [a for g in ("fit", "silhouette", "fiber", "color") for a in attr_values(p, g)]}
 
 
 def top_per_category(products: list[dict], n: int = 3) -> list[dict]:
-    """순위는 카테고리마다 따로 매겨지므로 카테고리별 상위 n개씩."""
+    """카테고리별 상위 n개씩 (아이템 종류가 한쪽으로 쏠려 보이지 않게)."""
     out = []
     for code in sorted({p["category_code"] for p in products}):
         out += [product_brief(p) for p in products if p["category_code"] == code][:n]
@@ -136,7 +143,7 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         for p in today:
             prev = prev_rank.get((p["category_code"], p["product_id"]))
             if prev is None:
-                if p["rank"] <= 50:
+                if p["clothing_rank"] <= 50:
                     new_entries.append(product_brief(p))
             elif prev - p["rank"] >= 10:
                 movers.append(product_brief(p) | {"prev_rank": prev, "change": prev - p["rank"]})
@@ -169,7 +176,7 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         if p["item_type"] in used_types:
             continue
         used_types.add(p["item_type"])
-        why = f"1일 랭킹 {p['category_name']} {p['rank']}위"
+        why = f"1일 전체 랭킹 {p['rank']}위 ({p['category_name']})"
         prev = prev_rank.get((p["category_code"], p["product_id"]))
         if prev and prev > p["rank"]:
             why += f" (어제 {prev}위)"
@@ -211,12 +218,13 @@ def analyze(date: str) -> dict:
         raise FileNotFoundError(f"{HISTORY_DIR / (date + '.csv')} 없음 — 먼저 musinsa_fetch.py 실행")
     details = load_details()
     today = build_products(rows, details)
+    scope = data_scope(rows)
     yesterday_date = previous_dates(date, 1)[0]
     yesterday, history = None, []
     for d in previous_dates(date, TREND_WINDOW_DAYS):
         prev = load_day(d)
-        if prev is None:
-            continue
+        if prev is None or data_scope(prev) != scope:
+            continue  # 수집 방식이 다른 날(예: 9/24 카테고리별 랭킹)은 비교하지 않음
         products = build_products(prev, details)
         history.append(products)
         if d == yesterday_date:
@@ -225,6 +233,7 @@ def analyze(date: str) -> dict:
     ids = {r["product_id"] for r in rows}
     return {
         "date": date,
+        "scope": scope,
         "history_days": len(history),
         "has_yesterday": yesterday is not None,
         "detail_coverage": round(100 * sum(1 for i in ids if i in details) / max(1, len(ids)), 1),

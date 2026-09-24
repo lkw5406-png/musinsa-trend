@@ -5,19 +5,21 @@
 소재, 컬러를 분석하고 추천 아이템을 뽑는다. 결과는 **고정 주소 하나**(GitHub Pages `docs/index.html`)에
 날짜별로 쌓는다. 매일 새 링크를 보내지 않는다.
 
-## 수집 범위
-- 랭킹: 전체 랭킹(섹션 199), 기간 `period=DAILY`(최근 1일). 급상승(201)·NEW(200)·유니섹스 구분은 쓰지 않음 (2026-09-24 사장님 결정)
-- 성별 필터: 남성(M), 여성(F)
-- 카테고리: 상의 001, 아우터 002, 바지 003, 원피스/스커트 100 (남성 × 원피스/스커트는 비어 있어 제외)
-- 제외: 뷰티 104, 신발 103, 가방 004, 모자 120, 소품 101, 속옷/홈웨어 026, 디지털/라이프 102, 키즈 106, 스포츠/레저 017
-- 랭킹: 7개 목록 × 200위 → 요청 14회, 4초 간격 (약 1분), 하루 1,400행
-- 상세정보: 처음 보는 상품만, 상품당 요청 2회, 2초 간격. 첫날 1,318개(약 1.5시간), 이후 하루 수십~수백 개
+## 수집 범위 (2026-09-25부터)
+- 랭킹: **남성·여성 전체 랭킹**(섹션 199, 카테고리 000), 기간 `period=DAILY`(최근 1일)
+- 1위부터 한 페이지(≈100위)씩 내려가며 **의류만 골라 성별마다 300개**가 모이면 멈춤 (2026-09-25 사장님 결정: "전체 랭킹 300위, 의류만, 300개 채우기")
+- 의류 = 무신사 대분류 상의 001, 아우터 002, 바지 003, 원피스/스커트 100
+- 제외: 뷰티 104, 신발 103, 가방 004, 모자 120, 소품 101, 속옷/홈웨어 026, 디지털/라이프 102, 키즈 106, 스포츠/레저 017(운동복 포함)
+- 전체 랭킹에는 카테고리 표시가 없어서(모두 000) **상품 상세정보의 대분류로 의류인지 판별**. 비의류는 요청 1번, 의류는 2번(소재 포함). 한 번 본 상품은 다시 요청 안 함
+- 급상승(201)·NEW(200)·유니섹스 구분은 쓰지 않음 (2026-09-24 사장님 결정)
+- CSV의 `rank` = 무신사 전체 순위(비의류 포함), `clothing_rank` = 의류끼리 순위(1~300, 분석 가중치에 사용)
+- 2026-09-24 기록은 예전 방식(카테고리별 1~200위)이라 추세 비교에서 자동으로 빠짐 (`analyze_trends.data_scope`)
 
 ## 순서와 Tool
 | 단계 | Tool | 결과물 |
 |---|---|---|
-| 1. 랭킹 수집 | `tools/musinsa_fetch.py` | `data/history/YYYY-MM-DD.csv` |
-| 2. 상세정보 수집 | `tools/product_details.py` | `data/product_details.json` (상품별 누적 저장소) |
+| 1. 랭킹 수집 (의류 판별용 상세정보 포함) | `tools/musinsa_fetch.py` | `data/history/YYYY-MM-DD.csv` |
+| 2. 빠진 상세정보 채우기 | `tools/product_details.py` | `data/product_details.json` (상품별 누적 저장소) |
 | 3. 분석 | `tools/analyze_trends.py` (분류: `tools/classify_attributes.py` + `tools/attribute_keywords.json`) | `.tmp/analysis_YYYY-MM-DD.json` |
 | 4. 리포트 | `tools/build_report.py` | `docs/index.html`(최신), `docs/reports/YYYY-MM-DD.html`, `docs/dates.json` |
 
@@ -37,14 +39,16 @@
 | 두께 | 판매자 입력 | — |
 
 ## 데이터 주소 (2026-09-24 확인)
-- 랭킹: `https://api.musinsa.com/api2/hm/web/v5/pans/ranking/sections/199?storeCode=musinsa&gf=M&ageBand=AGE_BAND_ALL&period=DAILY&categoryCode=001&contentsId=`
+- 랭킹: `https://api.musinsa.com/api2/hm/web/v5/pans/ranking/sections/199?storeCode=musinsa&gf=M&ageBand=AGE_BAND_ALL&period=DAILY&categoryCode=000&contentsId=`
   - 다음 페이지: `&page=2&offset={직전 마지막 순위}&startRank={+1}`
 - 상품 상세: `https://goods-detail.musinsa.com/api2/goods/{상품번호}` (핏 등 `goodsMaterial`, 소분류 `category`, 설명 `goodsContents`)
 - 제품 소재: `https://goods-detail.musinsa.com/api2/goods/{상품번호}/essential`
 - 두 주소 모두 robots.txt 없음(404). www.musinsa.com은 등록 안 된 봇을 금지하므로 쓰지 않음.
 
 ## 필요한 설정
-- GitHub Pages: Settings → Pages → Branch `main` / 폴더 `/docs` → 이 주소가 사장님이 보는 고정 링크
+- 저장소: https://github.com/lkw5406-png/musinsa-trend (공개)
+- **리포트 고정 링크: https://lkw5406-png.github.io/musinsa-trend/**
+- GitHub Pages: Settings → Pages → Branch `main` / 폴더 `/docs` (저장소가 공개일 때만 무료로 켜짐)
 - 비밀 정보 필요 없음 (Gmail 연동은 2026-09-24 사장님 결정으로 뺌)
 
 ## 수집 원칙 (바꾸지 말 것)
@@ -61,7 +65,7 @@
 - **실패 알림을 못 받음**: GitHub → 오른쪽 위 프로필 → Settings → Notifications → Actions에서 실패 알림 이메일이 켜져 있는지 확인. 실행 기록은 저장소의 Actions 탭.
 
 ## 알게 된 것 (계속 추가)
-- 2026-09-24: 랭킹 1페이지 ≈ 101개. 전체 카테고리(000) 랭킹은 상품의 실제 카테고리를 알려주지 않아 카테고리별로 요청해야 함.
+- 2026-09-24: 랭킹 1페이지 ≈ 101개 (3페이지면 300위까지 빠짐없이 받음, 2026-09-25 확인). 전체 카테고리(000) 랭킹은 상품의 실제 카테고리를 알려주지 않아 카테고리별로 요청해야 함.
 - 2026-09-24: 기간 옵션 `period`: REALTIME(실시간) / DAILY(1일) / WEEKLY(1주) / MONTHLY(1개월).
 - 2026-09-24: 남성(M) × 원피스/스커트(100)는 0개 → `SKIP`.
 - 2026-09-24: 상품명만으로는 실루엣 35%, 소재 41%만 분류됨 → 상세정보(판매자 입력 핏·제품 소재) 추가. 판매자 절반가량은 핏을 비워 둠.
