@@ -20,12 +20,14 @@ import sys
 import time
 from html import unescape
 
-from common import DETAILS_PATH, HISTORY_DIR, BlockedError, get_json, today_kst
+from common import DETAILS_PATH, HISTORY_DIR, TMP_DIR, BlockedError, get_json, today_kst
 
 DETAIL_URL = "https://goods-detail.musinsa.com/api2/goods/{id}"
 REQUEST_INTERVAL_SEC = 2
 SAVE_EVERY = 25
 DESC_CHARS = 600
+LOCK_PATH = TMP_DIR / "product_details.lock"
+LOCK_STALE_SEC = 600  # 25개 저장마다 갱신(약 2분). 10분 넘게 안 바뀌면 멈춘 것으로 보고 새로 시작 허용
 
 MATERIAL_FIELDS = {"핏": "fit", "두께": "thickness", "신축성": "stretch", "비침": "sheer", "촉감": "touch", "계절": "season"}
 
@@ -137,8 +139,30 @@ def save_details(details: dict) -> None:
     tmp.replace(DETAILS_PATH)
 
 
+def _another_run_active() -> bool:
+    """다른 수집이 최근 LOCK_STALE_SEC 안에 잠금 파일을 갱신했으면 돌고 있는 것으로 본다.
+    (2026-09-24: 창을 다시 켤 때마다 새로 시작해 3개가 동시에 돌며 같은 파일을 덮어쓴 일이 있었음)"""
+    return LOCK_PATH.exists() and time.time() - LOCK_PATH.stat().st_mtime < LOCK_STALE_SEC
+
+
+def _touch_lock() -> None:
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    LOCK_PATH.write_text(str(time.time()), encoding="utf-8")
+
+
 def update_details(date: str, limit: int | None = None) -> int:
     """해당 날짜 랭킹에서 상세정보가 없는 상품만 가져온다. 새로 가져온 개수를 돌려준다."""
+    if _another_run_active():
+        print("다른 상세정보 수집이 이미 돌고 있어서 이번엔 건너뜀 (잠금: .tmp/product_details.lock)")
+        return 0
+    _touch_lock()
+    try:
+        return _update_details(date, limit)
+    finally:
+        LOCK_PATH.unlink(missing_ok=True)
+
+
+def _update_details(date: str, limit: int | None) -> int:
     with open(HISTORY_DIR / f"{date}.csv", encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
     details = load_details()
@@ -160,6 +184,7 @@ def update_details(date: str, limit: int | None = None) -> int:
             done += 1
             if done % SAVE_EVERY == 0:
                 save_details(details)
+                _touch_lock()
                 print(f"  {done}/{len(todo)}", flush=True)
     finally:
         save_details(details)  # 차단·오류로 멈춰도 받은 만큼은 저장
