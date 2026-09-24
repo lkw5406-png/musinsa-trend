@@ -97,12 +97,117 @@ def product_brief(p: dict) -> dict:
         "attrs": [a for g in ("fit", "silhouette", "fiber", "color") for a in attr_values(p, g)]}
 
 
-def top_per_category(products: list[dict], n: int = 3) -> list[dict]:
-    """카테고리별 상위 n개씩 (아이템 종류가 한쪽으로 쏠려 보이지 않게)."""
+CATEGORY_ORDER = ["001", "002", "003", "100"]  # 상의, 아우터, 바지, 원피스/스커트
+ITEM_PROFILE_GROUPS = ["silhouette", "texture", "fit", "fiber", "color", "detail"]  # 사장님이 정한 순서
+ITEM_PROFILE_MIN = 3        # 이보다 적은 아이템 종류는 따로 정리하지 않음
+PRICE_BANDS = [(0, 30000, "3만원 미만"), (30000, 50000, "3~5만원"), (50000, 100000, "5~10만원"),
+               (100000, 200000, "10~20만원"), (200000, float("inf"), "20만원 이상")]
+
+
+def _weight_share(part: list[dict], whole: list[dict]) -> float:
+    return 100 * sum(p["weight"] for p in part) / (sum(p["weight"] for p in whole) or 1.0)
+
+
+def _price(p: dict) -> int | None:
+    try:
+        return int(float(p["final_price"]))
+    except (TypeError, ValueError):
+        return None
+
+
+def _median(values: list[int]) -> int | None:
+    values = sorted(values)
+    if not values:
+        return None
+    mid = len(values) // 2
+    return values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) // 2
+
+
+def top_by_category(products: list[dict], n: int = 10) -> list[dict]:
+    """카테고리(상의/아우터/바지/원피스·스커트)별 인기 TOP n."""
     out = []
-    for code in sorted({p["category_code"] for p in products}):
-        out += [product_brief(p) for p in products if p["category_code"] == code][:n]
+    for code in CATEGORY_ORDER:
+        items = [p for p in products if p["category_code"] == code]
+        if items:
+            out.append({"code": code, "name": items[0]["category_name"], "count": len(items),
+                        "products": [product_brief(p) for p in items[:n]]})
     return out
+
+
+def category_mix(products: list[dict]) -> list[dict]:
+    """카테고리 구성: 상품 수와 순위 가중 비중."""
+    out = []
+    for code in CATEGORY_ORDER:
+        items = [p for p in products if p["category_code"] == code]
+        if items:
+            out.append({"code": code, "name": items[0]["category_name"], "count": len(items),
+                        "share": round(_weight_share(items, products), 1)})
+    return out
+
+
+def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[dict]:
+    """아이템 종류(긴소매 티셔츠, 데님 팬츠 …)마다 실루엣·원단·핏·소재·컬러·디테일 구성을 정리."""
+    by_type: dict[str, list[dict]] = defaultdict(list)
+    for p in today:
+        by_type[p["item_type"]].append(p)
+    prev_share = {}
+    if yesterday:
+        prev_by_type: dict[str, list[dict]] = defaultdict(list)
+        for p in yesterday:
+            prev_by_type[p["item_type"]].append(p)
+        prev_share = {t: _weight_share(ps, yesterday) for t, ps in prev_by_type.items()}
+
+    profiles = []
+    for item_type, items in by_type.items():
+        if len(items) < ITEM_PROFILE_MIN:
+            continue
+        share = _weight_share(items, today)
+        groups = {}
+        for group in ITEM_PROFILE_GROUPS:
+            s = shares(items, group)
+            known = sum(1 for p in items if attr_values(p, group))
+            values = sorted(s.items(), key=lambda kv: -kv[1][0])[:4]
+            groups[group] = {"coverage": round(100 * known / len(items)),
+                             "values": [{"name": v, "pct": round(pct, 1), "count": c} for v, (pct, c) in values]}
+        prices = [x for x in (_price(p) for p in items) if x]
+        profiles.append({
+            "name": item_type,
+            "category_code": items[0]["category_code"],
+            "category_name": items[0]["category_name"],
+            "count": len(items),
+            "share": round(share, 1),
+            "dod_pp": round(share - prev_share.get(item_type, 0.0), 1) if yesterday else None,
+            "median_price": _median(prices),
+            "best_rank": min(p["rank"] for p in items),
+            "groups": groups,
+            "top_products": [product_brief(p) for p in items[:3]],
+        })
+    profiles.sort(key=lambda x: (CATEGORY_ORDER.index(x["category_code"]) if x["category_code"] in CATEGORY_ORDER else 9,
+                                 -x["share"]))
+    return profiles
+
+
+def price_bands(products: list[dict]) -> dict:
+    """가격대별 상품 수 (카테고리별로도)."""
+    labels = [b[2] for b in PRICE_BANDS]
+    rows = []
+    for code in CATEGORY_ORDER:
+        items = [p for p in products if p["category_code"] == code]
+        if not items:
+            continue
+        counts = [0] * len(PRICE_BANDS)
+        for p in items:
+            price = _price(p)
+            if price is None:
+                continue
+            for i, (lo, hi, _) in enumerate(PRICE_BANDS):
+                if lo <= price < hi:
+                    counts[i] += 1
+                    break
+        prices = [x for x in (_price(p) for p in items) if x]
+        rows.append({"name": items[0]["category_name"], "counts": counts, "median": _median(prices)})
+    totals = [sum(r["counts"][i] for r in rows) for i in range(len(labels))]
+    return {"labels": labels, "rows": rows, "totals": totals}
 
 
 def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: list[list[dict]]) -> dict:
@@ -205,7 +310,10 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         "trend_label": trend_label,
         "headlines": headlines,
         "attributes": attributes,
-        "top": top_per_category(today),
+        "category_mix": category_mix(today),
+        "top_by_category": top_by_category(today),
+        "item_types": item_type_profiles(today, yesterday),
+        "price_bands": price_bands(today),
         "movers": movers[:10],
         "new_entries": new_entries[:10],
         "recommendations": recommendations,
