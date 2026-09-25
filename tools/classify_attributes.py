@@ -4,9 +4,14 @@
 - 아이템 종류: 상세정보의 공식 소분류 → 없으면 상품명 키워드
 - 핏: 판매자가 입력한 핏(상세정보) → 없으면 상품명 키워드
 - 주원료: 제품 소재 표기(상세정보) → 없으면 상품명 키워드
-- 실루엣·원단/가공: 상품명 키워드 → 없으면 상세 설명 글 키워드
-- 컬러·디테일: 상품명 키워드
+- 실루엣·기장: 상품명(+영문명) 키워드 → 없으면 상세 설명 글 키워드
+  → 그래도 기장이 비면 공식 소분류(미니/미디/롱스커트 등) → 실측 사이즈표 (size_silhouette)
+  → 모양(와이드/스트레이트 등)이 비면 실측 사이즈표 (바지만)
+- 원단/가공: 상품명(+영문명) 키워드 → 상세 설명 글 키워드 → 아이템 종류·주원료로 정해지는 원단 (IMPLIED_TEXTURE)
+- 핏: 판매자 입력 → 상품명 키워드 → 상세 설명 글 키워드
+- 컬러·디테일: 상품명(+영문명) 키워드
 - 두께: 상세정보
+- 실루엣·원단이 끝까지 비면: 사진 판독 기록(data/photo_labels.json, 사장님 요청 시 Claude가 수동 판독)
 
 키워드 사전: tools/attribute_keywords.json (분류가 빠지면 이 파일에 키워드를 추가)
 
@@ -19,8 +24,11 @@ from functools import lru_cache
 from pathlib import Path
 
 KEYWORDS_PATH = Path(__file__).resolve().parent / "attribute_keywords.json"
+PHOTO_LABELS_PATH = Path(__file__).resolve().parent.parent / "data" / "photo_labels.json"
 KEYWORD_GROUPS = ("fit", "silhouette", "fiber", "texture", "color", "detail")
 GROUPS = ("item_type", "fit", "silhouette", "fiber", "texture", "color", "detail", "thickness")
+LENGTH_LABELS = {"롱/맥시 기장", "미디 기장", "미니/숏 기장", "크롭"}
+SHAPE_LABELS = {"와이드", "스트레이트", "부츠컷/플레어", "테이퍼드", "머메이드", "A라인", "H라인"}
 GROUP_LABELS = {"item_type": "아이템", "fit": "핏", "silhouette": "실루엣", "fiber": "소재(주원료)",
                 "texture": "원단·가공", "color": "컬러", "detail": "디테일", "thickness": "두께"}
 
@@ -43,6 +51,13 @@ def load_rules() -> dict:
     for group in KEYWORD_GROUPS:
         rules[group] = [(name, _compile(k)) for name, kws in raw[group].items() for k in kws]
     return rules
+
+
+@lru_cache(maxsize=1)
+def load_photo_labels() -> dict:
+    if not PHOTO_LABELS_PATH.exists():
+        return {}
+    return {k: v for k, v in json.loads(PHOTO_LABELS_PATH.read_text(encoding="utf-8")).items() if not k.startswith("_")}
 
 
 OTHER_TYPE = {"001": "기타 상의", "002": "기타 아우터", "003": "기타 하의"}  # 무신사 공식 소분류 이름
@@ -74,22 +89,112 @@ def keywords(text: str, group: str) -> list[str]:
     return found
 
 
-def classify(product_name: str, category_code: str, category_name: str, detail: dict | None = None) -> dict:
-    name = product_name or ""
+# 아이템 종류 자체가 원단을 말해 주는 경우 (상품명·설명에 원단 단서가 없을 때만)
+IMPLIED_TEXTURE = {
+    "데님 팬츠": "데님", "트러커 재킷": "데님",
+    "니트/스웨터": "니트", "카디건": "니트",
+    "맨투맨/스웨트": "테리/스웨트", "후드 티셔츠": "테리/스웨트", "후드 집업": "테리/스웨트",
+    "플리스/뽀글이": "플리스/보아", "무스탕/퍼": "퍼/시어링", "레더/라이더스 재킷": "레더",
+    "숏패딩/헤비 아우터": "다운/패딩", "롱패딩/헤비 아우터": "다운/패딩", "경량 패딩/패딩 베스트": "다운/패딩",
+    "피케/카라 티셔츠": "피케",
+}
+FIBER_TEXTURE = {"가죽": "레더", "합성피혁": "레더"}
+# 무신사 공식 소분류가 기장을 정해 주는 경우
+CATEGORY_LENGTH = {"미니스커트": "미니/숏 기장", "미니원피스": "미니/숏 기장", "미디스커트": "미디 기장",
+                   "미디원피스": "미디 기장", "롱스커트": "롱/맥시 기장", "맥시원피스": "롱/맥시 기장"}
+
+# 실측 사이즈표 기준 (가운데 사이즈, cm). 이름에 실루엣이 적힌 상품들의 실제 치수로 정함 (2026-09-25, 의류 556개)
+# - 바지: 와이드/스트레이트는 밑단 비율이 아니라 허벅지 폭에서 갈림 (이름에 와이드 중앙값 36cm, 스트레이트 31cm).
+#   부츠컷은 허벅지가 좁고(중앙값 29.5cm) 밑단이 허벅지와 비슷하게 넓음, 테이퍼드는 밑단이 허벅지의 0.6배 미만.
+# - 상의 '크롭'은 판매자 표현일 뿐 실제 길이 차이가 작음(총장÷가슴 1.14 vs 일반 1.20) → 확실히 짧은 것만 크롭으로.
+TOP_CROP_RATIO = 1.0        # 상의·아우터: 총장 ÷ 가슴단면이 이보다 작고
+TOP_CROP_MAX_LENGTH = 58    # … 총장이 이 이하일 때만 크롭
+OUTER_LONG_LENGTH = 95      # 아우터: 총장이 이 이상이면 롱 기장
+PANTS_TAPERED = 0.6         # 바지: 밑단단면 ÷ 허벅지단면이 이보다 작으면 테이퍼드
+PANTS_FLARE = 0.95          # … 이 이상이면서 허벅지가 PANTS_WIDE_THIGH 미만이면 부츠컷/플레어
+PANTS_WIDE_THIGH = 33       # … 허벅지단면이 이 이상이면 와이드
+PANTS_STRAIGHT_THIGH = 31   # … 이 미만이면 스트레이트 (31~33cm는 판단 보류)
+
+
+def size_silhouette(size: dict | None, category_code: str) -> list[str]:
+    """실측 사이즈표로 기장(크롭/롱)과 바지 모양을 추정. 판단할 치수가 없으면 []."""
+    if not size:
+        return []
+    out = []
+    length, chest = size.get("총장"), size.get("가슴단면")
+    if category_code in ("001", "002") and length and chest:
+        if length / chest < TOP_CROP_RATIO and length <= TOP_CROP_MAX_LENGTH:
+            out.append("크롭")
+        elif category_code == "002" and length >= OUTER_LONG_LENGTH:
+            out.append("롱/맥시 기장")
+    thigh, hem = size.get("허벅지단면"), size.get("밑단단면")
+    if category_code == "003" and thigh and hem and (length or 0) >= 80:  # 반바지는 모양 판단 안 함
+        ratio = hem / thigh
+        if ratio < PANTS_TAPERED:
+            out.append("테이퍼드")
+        elif thigh >= PANTS_WIDE_THIGH:
+            out.append("와이드")
+        elif ratio >= PANTS_FLARE:
+            out.append("부츠컷/플레어")
+        elif thigh < PANTS_STRAIGHT_THIGH:
+            out.append("스트레이트")
+    return out
+
+
+# 상의·아우터에 붙은 '스트레이트 지퍼', '커브드 소매', '피쉬테일 파카' 등은 몸판 실루엣이 아님
+TOP_SILHOUETTES = LENGTH_LABELS | {"와이드", "A라인"}
+PANTS_SILHOUETTES = LENGTH_LABELS | SHAPE_LABELS - {"A라인", "H라인", "머메이드"} | {"하이웨이스트", "로우라이즈"}
+
+
+def _allowed(labels: list[str], category_code: str) -> list[str]:
+    allow = {"001": TOP_SILHOUETTES, "002": TOP_SILHOUETTES, "003": PANTS_SILHOUETTES}.get(category_code)
+    return [x for x in labels if allow is None or x in allow]
+
+
+def silhouette(name: str, desc: str, item_type: str, category_code: str, size: dict | None) -> list[str]:
+    found = (_allowed(keywords(name, "silhouette"), category_code)
+             or _allowed(keywords(desc, "silhouette"), category_code))
+    if not any(f in LENGTH_LABELS for f in found) and item_type in CATEGORY_LENGTH:
+        found.append(CATEGORY_LENGTH[item_type])
+    for label in size_silhouette(size, category_code):
+        axis = LENGTH_LABELS if label in LENGTH_LABELS else SHAPE_LABELS
+        if not any(f in axis for f in found):
+            found.append(label)
+    return found
+
+
+def texture(name: str, desc: str, item_type: str, fiber: list[str]) -> list[str]:
+    """설명 글은 배송·세탁 안내까지 섞여 있어 덜 정확하므로 아이템 종류로 정해지는 원단을 먼저 씀."""
+    found = keywords(name, "texture")
+    if found:
+        return found
+    implied = IMPLIED_TEXTURE.get(item_type) or next((FIBER_TEXTURE[f] for f in fiber if f in FIBER_TEXTURE), None)
+    return [implied] if implied else keywords(desc, "texture")
+
+
+def clean_desc(desc: str) -> str:
+    """2026-09-25 이전 수집분엔 CSS 코드('padding: 0 …')가 섞여 있어 '패딩'으로 잘못 잡힘 → 제거."""
+    return re.sub(r"[^{}]*\{[^}]*\}", " ", desc or "")
+
+
+def classify(product_name: str, category_code: str, category_name: str, detail: dict | None = None,
+             product_id: str = "") -> dict:
     d = detail if detail and not detail.get("missing") else {}
-    desc = d.get("desc", "")
+    name = " / ".join(x for x in (product_name, d.get("name_eng")) if x)  # 영문명은 2026-09-25 이후 수집분만
+    desc = clean_desc(d.get("desc", ""))
 
     cat2 = d.get("category2", "")
     item_type = cat2 if cat2 and str(d.get("category2_code", "")).startswith(category_code) else \
         _item_type(name, category_code, category_name)
 
     fiber = [d["main_fiber"]] if d.get("main_fiber") else keywords(name, "fiber")
+    photo = load_photo_labels().get(product_id, {})
     return {
         "item_type": item_type,
-        "fit": d.get("fit") or keywords(name, "fit"),
-        "silhouette": keywords(name, "silhouette") or keywords(desc, "silhouette"),
+        "fit": d.get("fit") or keywords(name, "fit") or keywords(desc, "fit"),
+        "silhouette": silhouette(name, desc, item_type, category_code, d.get("size")) or photo.get("silhouette", []),
         "fiber": fiber,
-        "texture": keywords(name, "texture") or keywords(desc, "texture"),
+        "texture": texture(name, desc, item_type, fiber) or photo.get("texture", []),
         "color": keywords(name, "color"),
         "detail": keywords(name, "detail"),
         "thickness": d.get("thickness") or [],
@@ -113,7 +218,8 @@ def main() -> int:
         if r["product_id"] in seen:
             continue
         seen.add(r["product_id"])
-        c = classify(r["product_name"], r["category_code"], r["category_name"], details.get(r["product_id"]))
+        c = classify(r["product_name"], r["category_code"], r["category_name"], details.get(r["product_id"]),
+                     r["product_id"])
         for g in GROUPS:
             missing[g] += not c[g]
         if len(samples) < 30:

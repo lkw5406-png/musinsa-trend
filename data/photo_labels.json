@@ -1,0 +1,18 @@
+{
+ "_설명": "상품 대표 사진을 Claude가 직접 보고 판단한 실루엣·기장/원단 (사장님 요청 시 수동 판독, 추가 요금 없음). 상품명·설명·사이즈표·아이템 종류로 못 채운 칸에만 쓴다. 확실하지 않으면 적지 않음.",
+ "3551101": {"silhouette": [], "texture": [], "checked": "2026-09-25"},
+ "6061370": {"silhouette": ["미니/숏 기장"], "texture": ["트윌/치노"], "checked": "2026-09-25"},
+ "5329359": {"silhouette": [], "texture": [], "checked": "2026-09-25"},
+ "7332836": {"silhouette": [], "texture": [], "checked": "2026-09-25"},
+ "7108774": {"silhouette": ["미니/숏 기장"], "texture": [], "checked": "2026-09-25"},
+ "6652082": {"silhouette": ["크롭"], "texture": [], "checked": "2026-09-25"},
+ "5453617": {"silhouette": [], "texture": [], "checked": "2026-09-25"},
+ "5532467": {"silhouette": ["미니/숏 기장"], "texture": [], "checked": "2026-09-25"},
+ "5162178": {"silhouette": ["미니/숏 기장"], "texture": [], "checked": "2026-09-25"},
+ "4356794": {"silhouette": ["미니/숏 기장"], "texture": [], "checked": "2026-09-25"},
+ "4884577": {"silhouette": [], "texture": [], "checked": "2026-09-25"},
+ "6100901": {"silhouette": [], "texture": [], "checked": "2026-09-25"},
+ "6796667": {"silhouette": ["미니/숏 기장"], "texture": [], "checked": "2026-09-25"},
+ "6061372": {"silhouette": ["미니/숏 기장"], "texture": ["트윌/치노"], "checked": "2026-09-25"},
+ "3551114": {"silhouette": [], "texture": [], "checked": "2026-09-25"}
+}

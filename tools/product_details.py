@@ -7,10 +7,12 @@ data/product_details.json에 저장한다. 한 번 가져온 상품은 다시 �
 - 핏(스키니/슬림/레귤러/루즈/오버사이즈), 두께, 신축성, 비침, 촉감, 계절
 - 제품 소재(상품정보제공고시) → 겉감의 주원료
 - 공식 소분류(예: 긴소매 티셔츠), 성별
-- 상세 설명 글(앞부분) → 상품명에 없는 실루엣·원단 키워드를 찾는 데 사용
+- 상세 설명 글(앞부분)·영문 상품명 → 상품명에 없는 실루엣·원단 키워드를 찾는 데 사용
+- 실측 사이즈표(가운데 사이즈의 총장·단면 등) → 기장, 바지 실루엣, 크롭 여부 판단에 사용
 
 사용법: python tools/product_details.py [--date YYYY-MM-DD] [--limit N]
   해당 날짜 랭킹 CSV에 있는 상품 중 아직 상세정보가 없는 것만 가져온다.
+  상세정보는 있는데 사이즈표만 없는 의류(2026-09-25 이전 수집분)는 사이즈표만 한 번 더 받는다.
 """
 import argparse
 import csv
@@ -23,9 +25,10 @@ from html import unescape
 from common import DETAILS_PATH, HISTORY_DIR, TMP_DIR, BlockedError, get_json, today_kst
 
 DETAIL_URL = "https://goods-detail.musinsa.com/api2/goods/{id}"
+SIZE_URL = DETAIL_URL + "/actual-size"
 REQUEST_INTERVAL_SEC = 2
 SAVE_EVERY = 25
-DESC_CHARS = 600
+DESC_CHARS = 1500
 CLOTHING_CODES = {"001", "002", "003", "100"}  # 상의, 아우터, 바지, 원피스/스커트 (스포츠/레저 017 등은 제외)
 LOCK_PATH = TMP_DIR / "product_details.lock"
 LOCK_STALE_SEC = 600  # 25개 저장마다 갱신(약 2분). 10분 넘게 안 바뀌면 멈춘 것으로 보고 새로 시작 허용
@@ -54,7 +57,8 @@ NON_SHELL = re.compile(r"(lining|안감|filling|충전|padding|배색|trim|rib|�
 
 
 def clean_text(html: str) -> str:
-    text = unescape(re.sub(r"<[^>]+>", " ", html or ""))
+    html = re.sub(r"<(style|script)[^>]*>.*?</\1>", " ", html or "", flags=re.S | re.I)  # 꾸밈 코드(CSS) 제거
+    text = unescape(re.sub(r"<[^>]+>", " ", html))
     return re.sub(r"\s+", " ", text.replace("﻿", "")).strip()
 
 
@@ -109,6 +113,22 @@ def is_clothing(detail: dict | None) -> bool:
     return category1(detail) in CLOTHING_CODES
 
 
+def fetch_size(product_id: str) -> dict:
+    """실측 사이즈표에서 가운데 사이즈 하나의 치수만 저장. 사이즈표가 없으면 {} (다시 요청하지 않게)."""
+    res = get_json(SIZE_URL.format(id=product_id), allow_404=True)
+    time.sleep(REQUEST_INTERVAL_SEC)
+    data = (res or {}).get("data") or {}
+    sizes = [s for s in data.get("sizes") or [] if s.get("items")]
+    if not sizes:
+        return {}
+    mid = sizes[(len(sizes) - 1) // 2]  # S/M/L이면 M, 사이즈가 짝수 개면 작은 쪽
+    out = {"type": data.get("typeName", ""), "name": mid.get("name", ""), "count": len(sizes)}
+    for item in mid["items"]:
+        if isinstance(item.get("value"), (int, float)) and item["value"] > 0:
+            out[item["name"]] = item["value"]
+    return out
+
+
 def fetch_detail(product_id: str) -> dict:
     goods = get_json(DETAIL_URL.format(id=product_id), allow_404=True)
     time.sleep(REQUEST_INTERVAL_SEC)
@@ -129,7 +149,8 @@ def fetch_detail(product_id: str) -> dict:
 
     essential = get_json(DETAIL_URL.format(id=product_id) + "/essential", allow_404=True)
     time.sleep(REQUEST_INTERVAL_SEC)
-    out["desc"] = clean_text(d.get("goodsContents", ""))[:DESC_CHARS]
+    out["desc"] = clean_text(" ".join(d.get(k) or "" for k in ("headDesc", "goodsContents", "mdOpinion")))[:DESC_CHARS]
+    out["name_eng"] = d.get("goodsNmEng") or ""
     for m in (d.get("goodsMaterial") or {}).get("materials") or []:
         key = MATERIAL_FIELDS.get(m.get("name"))
         if key:
@@ -141,7 +162,12 @@ def fetch_detail(product_id: str) -> dict:
             material_raw = clean_text(e.get("value", ""))
     out["material_raw"] = material_raw[:200]
     out["main_fiber"], out["main_fiber_pct"] = main_fiber(material_raw)
+    out["size"] = fetch_size(product_id)
     return out
+
+
+def needs_size(info: dict) -> bool:
+    return is_clothing(info) and "size" not in info
 
 
 def load_details() -> dict:
@@ -201,25 +227,32 @@ def _update_details(date: str, limit: int | None) -> int:
         rows = list(csv.DictReader(f))
     details = load_details()
     # 높은 순위부터: 도중에 멈춰도 중요한 상품이 먼저 채워지게
-    todo = []
+    todo, size_todo = [], []
     for r in sorted(rows, key=lambda r: int(r["rank"])):
-        if r["product_id"] not in details and r["product_id"] not in todo:
-            todo.append(r["product_id"])
+        pid = r["product_id"]
+        if pid not in details and pid not in todo:
+            todo.append(pid)
+        elif pid in details and needs_size(details[pid]) and pid not in size_todo:
+            size_todo.append(pid)
     if limit:
-        todo = todo[:limit]
-    print(f"상세정보: 새 상품 {len(todo)}개 (이미 있음 {len(details)}개)", flush=True)
+        todo, size_todo = todo[:limit], size_todo[:limit]
+    print(f"상세정보: 새 상품 {len(todo)}개, 사이즈표만 {len(size_todo)}개 (이미 있음 {len(details)}개)", flush=True)
 
     done = 0
+    total = len(todo) + len(size_todo)
     try:
-        for pid in todo:
-            info = fetch_detail(pid)
-            info["fetched"] = date
-            details[pid] = info
+        for pid in todo + size_todo:
+            if pid in details:
+                details[pid]["size"] = fetch_size(pid)
+            else:
+                info = fetch_detail(pid)
+                info["fetched"] = date
+                details[pid] = info
             done += 1
             if done % SAVE_EVERY == 0:
                 save_details(details)
                 _touch_lock()
-                print(f"  {done}/{len(todo)}", flush=True)
+                print(f"  {done}/{total}", flush=True)
     finally:
         save_details(details)  # 차단·오류로 멈춰도 받은 만큼은 저장
     print(f"상세정보 저장 완료: {done}개 추가 → 총 {len(details)}개")

@@ -55,7 +55,8 @@ def build_products(rows: list[dict], details: dict) -> dict[str, list[dict]]:
         p["rank"] = int(r["rank"])  # 무신사 전체 랭킹 순위 (비의류 포함 순위)
         p["clothing_rank"] = int(r.get("clothing_rank") or r["rank"])  # 의류끼리 순위 1~300
         p["weight"] = (MAX_RANK + 1 - p["clothing_rank"]) / MAX_RANK
-        p.update(classify(r["product_name"], r["category_code"], r["category_name"], details.get(r["product_id"])))
+        p.update(classify(r["product_name"], r["category_code"], r["category_name"], details.get(r["product_id"]),
+                          r["product_id"]))
         out[gender].append(p)
     for products in out.values():
         products.sort(key=lambda x: (x["rank"], x["category_code"]))
