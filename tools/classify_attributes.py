@@ -8,8 +8,9 @@
   → 그래도 기장이 비면 공식 소분류(미니/미디/롱스커트 등) → 실측 사이즈표 (size_silhouette)
   → 모양(와이드/스트레이트 등)이 비면 실측 사이즈표 (바지만)
 - 원단/가공: 상품명(+영문명) 키워드 → 상세 설명 글 키워드 → 아이템 종류·주원료로 정해지는 원단 (IMPLIED_TEXTURE)
-- 핏: 판매자 입력 → 상품명 키워드 → 상세 설명 글 키워드
-- 컬러·디테일: 상품명(+영문명) 키워드
+- 핏: 판매자 입력 → 상품명 키워드 → 상세 설명 글 키워드 → 실측 사이즈표 가슴·허벅지 폭 (size_fit)
+- 컬러: 상품명(+영문명) 키워드 → 판매 옵션의 색상 목록 (여러 색 상품은 판매 중인 색 모두)
+- 디테일: 상품명(+영문명) 키워드
 - 두께: 상세정보
 - 실루엣·원단이 끝까지 비면: 사진 판독 기록(data/photo_labels.json, 사장님 요청 시 Claude가 수동 판독)
 
@@ -151,6 +152,33 @@ def _allowed(labels: list[str], category_code: str) -> list[str]:
     return [x for x in labels if allow is None or x in allow]
 
 
+# 핏 추정 기준: 판매자가 핏을 입력한 상품들의 가운데 사이즈 가슴단면(상의·아우터)·허벅지단면(바지), cm (2026-09-25)
+# 예) 남성·공용 상의 레귤러 중앙값 56, 루즈 62 / 여성 상의 슬림 42, 레귤러 45~54, 루즈 60
+#     바지는 핏끼리 허벅지 폭이 거의 같아(레귤러 34 vs 루즈 36) 아주 넓거나 좁은 것만 판단
+FIT_BY_SIZE = {  # (카테고리, 여성?) → (이 이하면 슬림, 이 이상이면 루즈), 그 사이는 레귤러
+    ("001", False): (50, 61), ("001", True): (44, 57),
+    ("002", False): (52, 64), ("002", True): (46, 58),
+    ("003", False): (28, 39), ("003", True): (27, 38),
+}
+FIT_REGULAR_FROM_SIZE = {"001", "002"}  # 바지는 레귤러 판단은 안 함 (구분이 안 돼서)
+
+
+def size_fit(size: dict | None, category_code: str, sex: list[str]) -> list[str]:
+    if not size:
+        return []
+    women = sex == ["여성"]
+    width = size.get("허벅지단면") if category_code == "003" else size.get("가슴단면")
+    rule = FIT_BY_SIZE.get((category_code, women))
+    if not width or not rule:
+        return []
+    slim, loose = rule
+    if width <= slim:
+        return ["슬림"]
+    if width >= loose:
+        return ["루즈"]
+    return ["레귤러"] if category_code in FIT_REGULAR_FROM_SIZE else []
+
+
 def silhouette(name: str, desc: str, item_type: str, category_code: str, size: dict | None) -> list[str]:
     found = (_allowed(keywords(name, "silhouette"), category_code)
              or _allowed(keywords(desc, "silhouette"), category_code))
@@ -191,11 +219,12 @@ def classify(product_name: str, category_code: str, category_name: str, detail: 
     photo = load_photo_labels().get(product_id, {})
     return {
         "item_type": item_type,
-        "fit": d.get("fit") or keywords(name, "fit") or keywords(desc, "fit"),
+        "fit": (d.get("fit") or keywords(name, "fit") or keywords(desc, "fit")
+                or size_fit(d.get("size"), category_code, d.get("sex") or [])),
         "silhouette": silhouette(name, desc, item_type, category_code, d.get("size")) or photo.get("silhouette", []),
         "fiber": fiber,
         "texture": texture(name, desc, item_type, fiber) or photo.get("texture", []),
-        "color": keywords(name, "color"),
+        "color": keywords(name, "color") or keywords(" / ".join(d.get("colors") or []), "color"),
         "detail": keywords(name, "detail"),
         "thickness": d.get("thickness") or [],
     }

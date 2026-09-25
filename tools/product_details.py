@@ -9,10 +9,11 @@ data/product_details.json에 저장한다. 한 번 가져온 상품은 다시 �
 - 공식 소분류(예: 긴소매 티셔츠), 성별
 - 상세 설명 글(앞부분)·영문 상품명 → 상품명에 없는 실루엣·원단 키워드를 찾는 데 사용
 - 실측 사이즈표(가운데 사이즈의 총장·단면 등) → 기장, 바지 실루엣, 크롭 여부 판단에 사용
+- 판매 옵션의 색상 목록 → 상품명에 색이 없을 때('5 COLOR' 등) 컬러 판단에 사용 (2026-09-25 사장님 승인)
 
 사용법: python tools/product_details.py [--date YYYY-MM-DD] [--limit N]
   해당 날짜 랭킹 CSV에 있는 상품 중 아직 상세정보가 없는 것만 가져온다.
-  상세정보는 있는데 사이즈표만 없는 의류(2026-09-25 이전 수집분)는 사이즈표만 한 번 더 받는다.
+  상세정보는 있는데 사이즈표·색상 옵션이 없는 의류(2026-09-25 이전 수집분)는 빠진 것만 한 번 더 받는다.
 """
 import argparse
 import csv
@@ -26,6 +27,8 @@ from common import DETAILS_PATH, HISTORY_DIR, TMP_DIR, BlockedError, get_json, t
 
 DETAIL_URL = "https://goods-detail.musinsa.com/api2/goods/{id}"
 SIZE_URL = DETAIL_URL + "/actual-size"
+OPTIONS_URL = DETAIL_URL + "/options"
+COLOR_OPTION_NAMES = {"c", "color", "colour", "컬러", "색상", "색깔", "칼라"}
 REQUEST_INTERVAL_SEC = 2
 SAVE_EVERY = 25
 DESC_CHARS = 1500
@@ -129,6 +132,21 @@ def fetch_size(product_id: str) -> dict:
     return out
 
 
+def fetch_colors(product_id: str) -> list[str]:
+    """판매 옵션 중 색상 옵션의 값 이름들 (예: ['블랙', '브라운', '오트밀']). 없으면 [] (다시 요청하지 않게)."""
+    res = get_json(OPTIONS_URL.format(id=product_id), allow_404=True)
+    time.sleep(REQUEST_INTERVAL_SEC)
+    colors = []
+    for opt in ((res or {}).get("data") or {}).get("basic") or []:
+        name = str(opt.get("name") or "").strip().lower()
+        if opt.get("displayType") != "COLOR_CHIP" and name not in COLOR_OPTION_NAMES:
+            continue
+        for v in opt.get("optionValues") or []:
+            if not v.get("isDeleted") and v.get("name") and v["name"] not in colors:
+                colors.append(v["name"])
+    return colors[:20]
+
+
 def fetch_detail(product_id: str) -> dict:
     goods = get_json(DETAIL_URL.format(id=product_id), allow_404=True)
     time.sleep(REQUEST_INTERVAL_SEC)
@@ -163,11 +181,20 @@ def fetch_detail(product_id: str) -> dict:
     out["material_raw"] = material_raw[:200]
     out["main_fiber"], out["main_fiber_pct"] = main_fiber(material_raw)
     out["size"] = fetch_size(product_id)
+    out["colors"] = fetch_colors(product_id)
     return out
 
 
-def needs_size(info: dict) -> bool:
-    return is_clothing(info) and "size" not in info
+def missing_extras(info: dict) -> list[str]:
+    """기존 의류 상세정보에 빠진 추가 정보 ('size' 사이즈표, 'colors' 색상 옵션)."""
+    if not is_clothing(info):
+        return []
+    return [k for k in ("size", "colors") if k not in info]
+
+
+def fetch_extras(product_id: str, info: dict) -> None:
+    for key in missing_extras(info):
+        info[key] = fetch_size(product_id) if key == "size" else fetch_colors(product_id)
 
 
 def load_details() -> dict:
@@ -232,18 +259,18 @@ def _update_details(date: str, limit: int | None) -> int:
         pid = r["product_id"]
         if pid not in details and pid not in todo:
             todo.append(pid)
-        elif pid in details and needs_size(details[pid]) and pid not in size_todo:
+        elif pid in details and missing_extras(details[pid]) and pid not in size_todo:
             size_todo.append(pid)
     if limit:
         todo, size_todo = todo[:limit], size_todo[:limit]
-    print(f"상세정보: 새 상품 {len(todo)}개, 사이즈표만 {len(size_todo)}개 (이미 있음 {len(details)}개)", flush=True)
+    print(f"상세정보: 새 상품 {len(todo)}개, 사이즈표·색상만 {len(size_todo)}개 (이미 있음 {len(details)}개)", flush=True)
 
     done = 0
     total = len(todo) + len(size_todo)
     try:
         for pid in todo + size_todo:
             if pid in details:
-                details[pid]["size"] = fetch_size(pid)
+                fetch_extras(pid, details[pid])
             else:
                 info = fetch_detail(pid)
                 info["fetched"] = date

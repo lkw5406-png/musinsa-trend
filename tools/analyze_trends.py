@@ -95,7 +95,8 @@ def product_brief(p: dict) -> dict:
     return {k: p[k] for k in ("product_id", "brand", "product_name", "category_name", "item_type", "rank",
                               "clothing_rank", "final_price", "discount_rate", "sales_label", "image_url",
                               "product_url")} | {
-        "attrs": [a for g in ("fit", "silhouette", "fiber", "color") for a in attr_values(p, g)]}
+        "attrs": [a for g in ("fit", "silhouette", "fiber") for a in attr_values(p, g)]
+                 + attr_values(p, "color")[:3]}  # 여러 색 상품은 카드가 길어지지 않게 3색까지
 
 
 CATEGORY_ORDER = ["001", "002", "003", "100"]  # 상의, 아우터, 바지, 원피스/스커트
@@ -182,6 +183,8 @@ def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[
             groups[group] = {"coverage": round(100 * known / len(items)),
                              "values": [{"name": v, "pct": round(pct, 1), "count": c} for v, (pct, c) in values]}
         prices = [x for x in (_price(p) for p in items) if x]
+        originals = [x for x in (_price({"final_price": p.get("original_price")}) for p in items) if x]
+        discounts = [float(p["discount_rate"]) for p in items if str(p.get("discount_rate") or "").replace(".", "", 1).isdigit()]
         q = _quartiles(prices)
         profiles.append({
             "name": item_type,
@@ -191,6 +194,8 @@ def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[
             "share": round(share, 1),
             "dod_pp": round(share - prev_share.get(item_type, 0.0), 1) if yesterday else None,
             "median_price": _median(prices),
+            "median_original": _median(originals),  # 정가(할인 전 원상품가)
+            "discount_avg": round(sum(discounts) / len(discounts), 1) if discounts else None,
             "price_low": q[0] if q else None,
             "price_high": q[1] if q else None,
             "best_rank": min(p["rank"] for p in items),
@@ -200,6 +205,45 @@ def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[
     profiles.sort(key=lambda x: (CATEGORY_ORDER.index(x["category_code"]) if x["category_code"] in CATEGORY_ORDER else 9,
                                  -x["share"]))
     return profiles
+
+
+# 대분류: 디자인 참고·소재컬러 탭에서 아우터/상의/하의로 나눠 보기 (2026-09-25 사장님 요청)
+# 하의 = 바지 + 스커트. 원피스는 어디에도 넣지 않음.
+BIG_CATEGORIES = [("아우터", "002"), ("상의", "001"), ("하의", "003")]
+BIG_CATEGORY_GROUPS = ["fit", "silhouette", "detail", "color"]
+
+
+def big_category(p: dict) -> str | None:
+    if p["category_code"] == "100":
+        return "하의" if "스커트" in p["item_type"] else None
+    return next((name for name, code in BIG_CATEGORIES if code == p["category_code"]), None)
+
+
+def attr_table(today: list[dict], yesterday: list[dict] | None, group: str, min_count: int) -> dict:
+    """속성 순위표 한 개 (전체 속성 순위와 같은 모양, 추세는 어제 대비만)."""
+    s_today = shares(today, group)
+    s_yday = shares(yesterday, group) if yesterday else None
+    rows = []
+    for v, (share, cnt) in s_today.items():
+        if cnt < min_count:
+            continue
+        dod = round(share - s_yday.get(v, (0.0, 0))[0], 1) if s_yday is not None else None
+        rows.append({"name": v, "share": round(share, 1), "count": cnt, "dod_pp": dod, "week_pp": None})
+    rows.sort(key=lambda r: -r["share"])
+    known = sum(1 for p in today if attr_values(p, group))
+    return {"rows": rows, "coverage": round(100 * known / max(1, len(today)), 1)}
+
+
+def by_big_category(today: list[dict], yesterday: list[dict] | None) -> list[dict]:
+    out = []
+    for name, _ in BIG_CATEGORIES:
+        items = [p for p in today if big_category(p) == name]
+        if not items:
+            continue
+        prev = [p for p in yesterday if big_category(p) == name] if yesterday else None
+        out.append({"name": name, "count": len(items),
+                    "attributes": {g: attr_table(items, prev, g, min_count=2) for g in BIG_CATEGORY_GROUPS}})
+    return out
 
 
 def price_bands(products: list[dict]) -> dict:
@@ -327,7 +371,8 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         "headlines": headlines,
         "attributes": attributes,
         "category_mix": category_mix(today),
-        "top_by_category": top_by_category(today),
+        "top_by_category": top_by_category(today, n=50),  # 화면엔 20개, 더보기로 50개
+        "big_categories": by_big_category(today, yesterday),
         "item_types": item_type_profiles(today, yesterday),
         "price_bands": price_bands(today),
         "movers": movers[:10],

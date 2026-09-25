@@ -51,6 +51,7 @@ CSS = """
   --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --chip: rgba(57,135,229,0.30);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--page); color: var(--ink);
   font: 15px/1.55 system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
 .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
@@ -198,6 +199,12 @@ tr.hi td { background: color-mix(in srgb, var(--up-text) 9%, transparent); }
 .pcell .pb { padding: 8px 10px 10px; display: flex; flex-direction: column; font-size: 13px; }
 .pcell .pv { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pcell .pn { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.more { display: block; margin: 14px auto 0; font: inherit; font-weight: 600; font-size: 14px; padding: 9px 22px;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); cursor: pointer; }
+.more:hover { border-color: var(--accent); }
+.more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pal-h { margin: 18px 0 8px; } .pal-h:first-of-type { margin-top: 0; }
+.pal-h small { font-weight: 400; color: var(--muted); font-size: 12px; }
 /* 아이템별 가격 */
 .pt tr.grp td { font-weight: 700; color: var(--ink-2); padding-top: 14px; border-bottom: 1px solid var(--axis); }
 .pt td.num { white-space: nowrap; }
@@ -205,6 +212,7 @@ tr.hi td { background: color-mix(in srgb, var(--up-text) 9%, transparent); }
 .prange { position: relative; height: 10px; background: var(--grid); border-radius: 5px; }
 .prange span { position: absolute; top: 0; bottom: 0; background: var(--chip); border: 1px solid var(--accent); border-radius: 5px; }
 .prange i { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
+.prange i.o { width: 0; background: none; border-left: 2px dotted var(--down-text); }
 footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 70ch; }
 #tip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--page);
   font-size: 12px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; max-width: 260px; }
@@ -269,6 +277,13 @@ document.querySelectorAll('.seg').forEach(seg => {
     seg.parentElement.querySelectorAll('.seg-panel').forEach(p => p.hidden = p.id !== b.dataset.show);
   }));
 });
+
+// 카테고리별 인기 TOP: 더보기 / 접기
+document.querySelectorAll('.more').forEach(b => b.addEventListener('click', () => {
+  const extra = b.parentElement.querySelectorAll('.extra'), open = extra.length && extra[0].hidden;
+  extra.forEach(x => x.hidden = !open);
+  b.textContent = open ? b.dataset.close : b.dataset.open;
+}));
 
 // 날짜 선택: 최신 목록(dates.json)을 불러와 채움. 못 불러오면 페이지에 들어 있는 목록을 씀.
 const pick = document.getElementById('date');
@@ -427,11 +442,13 @@ def top10_section(idx: int, cats: list[dict]) -> str:
         btns.append(f"<button type='button' data-show='{pid}' aria-selected='{str(i == 0).lower()}'>"
                     f"{e(c['name'])} <small>({c['count']})</small></button>")
         cards = []
+        extra = len(c["products"]) - TOP_VISIBLE
         for n, p in enumerate(c["products"], 1):
             attrs = " · ".join(p.get("attrs") or [])
             attrs_html = f"<span class='meta'>{e(attrs)}</span>" if attrs else ""
+            hide = " hidden" if n > TOP_VISIBLE else ""
             cards.append(
-                f"<a class='topcard' href='{e(p['product_url'])}' target='_blank' rel='noopener'>"
+                f"<a class='topcard{' extra' if hide else ''}' href='{e(p['product_url'])}' target='_blank' rel='noopener'{hide}>"
                 f"<span class='rk'>{n}</span>"
                 f"<img src='{e(p['image_url'])}' alt='' loading='lazy' referrerpolicy='no-referrer'>"
                 f"<div class='body'><span class='brand'>{e(p['brand'])}</span>"
@@ -439,7 +456,9 @@ def top10_section(idx: int, cats: list[dict]) -> str:
                 f"<span class='price'>{won(p['final_price'])}</span>"
                 f"<span class='meta'>{e(p['item_type'])} · 전체 {p['rank']}위</span>{attrs_html}</div></a>")
         hidden = "hidden" if i else ""
-        panels.append(f"<div class='seg-panel' id='{pid}' {hidden}><div class='topgrid'>{''.join(cards)}</div></div>")
+        more = (f"<button type='button' class='more' data-open='더보기 · {TOP_VISIBLE + 1}~{len(c['products'])}위' "
+                f"data-close='접기'>더보기 · {TOP_VISIBLE + 1}~{len(c['products'])}위</button>") if extra > 0 else ""
+        panels.append(f"<div class='seg-panel' id='{pid}' {hidden}><div class='topgrid'>{''.join(cards)}</div>{more}</div>")
     return f"<div><div class='seg' role='tablist'>{''.join(btns)}</div>{''.join(panels)}</div>"
 
 
@@ -476,14 +495,16 @@ def price_section(pb: dict | None) -> str:
 
 PURPOSES = [  # 목적별 탭 (주소 끝 #여성-소재컬러 처럼 공유 가능). 2026-09-25 디자이너 실무용으로 개편
     ("요약", "오늘 요약"),
-    ("기획", "무엇을 만들까"),
+    ("인기", "카테고리별 인기 TOP"),
+    ("기획", "카테고리 순위"),
     ("디자인", "디자인 참고"),
     ("소재컬러", "소재·컬러"),
     ("가격", "가격"),
     ("동향", "시장 동향"),
 ]
 DESIGN_CHARTS = [("fit", "핏"), ("silhouette", "실루엣·기장"), ("detail", "디테일")]
-MATERIAL_CHARTS = [("texture", "원단·가공"), ("fiber", "소재(주원료)"), ("thickness", "두께")]
+MATERIAL_CHARTS = [("texture", "원단·가공"), ("fiber", "소재(주원료)")]
+TOP_VISIBLE = 20  # 카테고리별 인기 TOP: 처음 보이는 개수, 나머지는 '더보기'로 (최대 50)
 BRIEF_MIN_PCT = 30  # 요약 문장에 넣을 아이템 속성의 최소 비중
 
 
@@ -605,24 +626,54 @@ def item_price_table(types: list[dict]) -> str:
     rows = [t for t in types if t.get("median_price")]
     if not rows:
         return '<p class="empty">데이터가 없어요.</p>'
-    top = max((t.get("price_high") or t["median_price"]) for t in rows) or 1
+    top = max(max(t.get("price_high") or 0, t.get("median_original") or 0, t["median_price"]) for t in rows) or 1
     body, current = [], None
     for t in rows:
         if t["category_name"] != current:
             current = t["category_name"]
-            body.append(f"<tr class='grp'><td colspan='4'>{e(current)}</td></tr>")
+            body.append(f"<tr class='grp'><td colspan='6'>{e(current)}</td></tr>")
         lo, hi = t.get("price_low"), t.get("price_high")
         rng = f"{won(lo)} ~ {won(hi)}" if lo and hi else "<span class='flat-t'>상품이 적어 생략</span>"
         bar = ""
         if lo and hi:
             bar = (f"<span style='left:{100 * lo / top:.1f}%;width:{max(1.0, 100 * (hi - lo) / top):.1f}%'></span>")
         bar += f"<i style='left:{100 * t['median_price'] / top:.1f}%'></i>"
+        orig = t.get("median_original")
+        if orig:
+            bar += f"<i class='o' style='left:{min(100.0, 100 * orig / top):.1f}%'></i>"
+        disc = f"{t['discount_avg']:.0f}%" if t.get("discount_avg") is not None else "–"
         body.append(f"<tr><td><b>{e(t['name'])}</b> <small style='color:var(--muted)'>{t['count']}개</small></td>"
-                    f"<td class='num'><b>{won(t['median_price'])}</b></td><td class='num'>{rng}</td>"
+                    f"<td class='num'><b>{won(t['median_price'])}</b></td><td class='num'>{won(orig) or '–'}</td>"
+                    f"<td class='num'>{disc}</td><td class='num'>{rng}</td>"
                     f"<td class='pr-cell'><div class='prange'>{bar}</div></td></tr>")
-    head = "<th>아이템</th><th class='num'>중간 가격</th><th class='num'>주로 팔리는 가격</th><th>분포</th>"
+    head = ("<th>아이템</th><th class='num'>실판매가(중간)</th><th class='num'>정가(중간)</th><th class='num'>평균 할인율</th>"
+            "<th class='num'>주로 팔리는 실판매가</th><th>분포</th>")
     return (f"<div class='table-wrap'><table class='pt'><thead><tr>{head}</tr></thead>"
             f"<tbody>{''.join(body)}</tbody></table></div>")
+
+
+def big_category_charts(gi: int, g: dict) -> str:
+    """디자인 참고: 아우터/상의/하의 버튼으로 바꿔 보는 핏·실루엣·디테일 순위."""
+    cats = g.get("big_categories") or []
+    if not cats:
+        return '<p class="empty">데이터가 없어요.</p>'
+    btns, panels = [], []
+    for i, c in enumerate(cats):
+        pid = f"bc-{gi}-{i}"
+        btns.append(f"<button type='button' data-show='{pid}' aria-selected='{str(i == 0).lower()}'>"
+                    f"{e(c['name'])} <small>({c['count']})</small></button>")
+        charts = "".join(share_chart(title, c["attributes"][key], "어제", g["has_trend"]) for key, title in DESIGN_CHARTS)
+        panels.append(f"<div class='seg-panel' id='{pid}' {'hidden' if i else ''}><div class='charts'>{charts}</div></div>")
+    return f"<div><div class='seg' role='tablist'>{''.join(btns)}</div>{''.join(panels)}</div>"
+
+
+def big_category_palettes(g: dict) -> str:
+    """소재·컬러: 아우터/상의/하의 컬러 팔레트를 차례로."""
+    cats = g.get("big_categories") or []
+    if not cats:
+        return '<p class="empty">데이터가 없어요.</p>'
+    return "".join(f"<h3 class='sec-h pal-h'>{e(c['name'])} <small>{c['count']}개</small></h3>"
+                   f"{palette(c['attributes']['color'], g['has_trend'])}" for c in cats)
 
 
 def charts_html(g: dict, groups: list[tuple[str, str]]) -> str:
@@ -653,6 +704,12 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
     {headline_cards(g['headlines'])}
     {mix_bar(g.get('category_mix', []))}
   </section>""",
+        "인기": f"""
+  <section class="card">
+    <h2>카테고리별 인기 TOP {TOP_VISIBLE}</h2>
+    <p class="sub">카테고리를 눌러 바꿔 보세요. 맨 아래 '더보기'로 50위까지. 번호 = 카테고리 안 순위, '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위</p>
+    {top10_section(gi, g.get('top_by_category', []))}
+  </section>""",
         "기획": f"""
   <section class="card">
     <h2>아이템 순위</h2>
@@ -671,25 +728,25 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
     {design_section(gi, types)}
   </section>
   <section class="card">
-    <h2>전체 핏 · 실루엣 · 디테일</h2>
-    <p class="sub">{chart_sub}</p>
-    <div class="charts">{charts_html(g, DESIGN_CHARTS)}</div>
+    <h2>대분류별 핏 · 실루엣 · 디테일</h2>
+    <p class="sub">아우터 / 상의 / 하의(바지·스커트)를 눌러 바꿔 보세요. {chart_sub}</p>
+    {big_category_charts(gi, g)}
   </section>""",
         "소재컬러": f"""
   <section class="card">
     <h2>컬러 팔레트</h2>
-    <p class="sub">잘 팔리는 컬러를 인기 비중 순으로.{' 작은 숫자 = ' + e(g['trend_label']) + ' 변화.' if g['has_trend'] else ''}</p>
-    {palette(g['attributes']['color'], g['has_trend'])}
+    <p class="sub">대분류별로 잘 팔리는 컬러를 인기 비중 순으로. 여러 색으로 파는 상품은 판매 중인 색을 모두 셌어요.{' 작은 숫자 = 어제 대비 변화.' if g['has_trend'] else ''}</p>
+    {big_category_palettes(g)}
   </section>
   <section class="card">
-    <h2>원단 · 소재 · 두께</h2>
-    <p class="sub">{chart_sub} 소재 = 상품정보제공고시의 겉감 주원료, 두께 = 판매자 입력.</p>
+    <h2>원단 · 소재</h2>
+    <p class="sub">{chart_sub} 소재 = 상품정보제공고시의 겉감 주원료.</p>
     <div class="charts">{charts_html(g, MATERIAL_CHARTS)}</div>
   </section>""",
         "가격": f"""
   <section class="card">
     <h2>아이템별 가격</h2>
-    <p class="sub">굵은 숫자 = 중간 가격. 주로 팔리는 가격 = 가운데 절반의 상품이 들어가는 범위. 막대의 세로선 = 중간 가격.</p>
+    <p class="sub">실판매가 = 할인이 적용된 지금 가격, 정가 = 할인 전 원래 가격. 주로 팔리는 실판매가 = 가운데 절반의 상품이 들어가는 범위. 막대: 파란 칸 = 주로 팔리는 실판매가, 검은 선 = 실판매가 중간, 빨간 점선 = 정가 중간.</p>
     {item_price_table(types)}
   </section>
   <section class="card">
@@ -698,11 +755,6 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
     {price_section(g.get('price_bands'))}
   </section>""",
         "동향": f"""
-  <section class="card">
-    <h2>카테고리별 인기 TOP 10</h2>
-    <p class="sub">카테고리를 눌러 바꿔 보세요. 번호 = 카테고리 안 순위, '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위</p>
-    {top10_section(gi, g.get('top_by_category', []))}
-  </section>
   <section class="card two">
     {product_table('어제보다 순위가 크게 오른 상품', g['movers'], extra_col='변화', empty=no_yday if not has_yesterday else '')}
     {product_table('오늘 새로 TOP 50에 진입', g['new_entries'], empty=no_yday if not has_yesterday else '')}
