@@ -145,6 +145,17 @@ td a:hover { text-decoration: underline; }
 .topcard { position: relative; text-decoration: none; color: inherit; border: 1px solid var(--border); border-radius: 12px;
   overflow: hidden; display: flex; flex-direction: column; background: var(--surface); }
 .topcard:hover { border-color: var(--accent); }
+.topcard .tlink { display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+.rv { border-top: 1px solid var(--grid); padding: 8px 11px 10px; font-size: 12px; display: flex; flex-direction: column;
+  gap: 3px; color: var(--ink-2); }
+.rv-h { color: var(--muted); font-variant-numeric: tabular-nums; }
+.rv-s { color: var(--ink-2); }
+.rv b { font-weight: 700; margin-right: 4px; }
+.rv-p b { color: var(--up-text); } .rv-c b { color: var(--down-text); }
+.rv-none { color: var(--muted); }
+.rv details summary { cursor: pointer; color: var(--muted); margin-top: 2px; }
+.rv .q { margin: 4px 0 0; padding-left: 8px; border-left: 2px solid var(--grid); line-height: 1.45; }
+.rv .q.good { border-left-color: var(--up-text); } .rv .q.bad { border-left-color: var(--down-text); }
 .topcard img { width: 100%; aspect-ratio: 1 / 1.15; object-fit: cover; background: var(--grid); display: block; }
 .topcard .rk { position: absolute; top: 8px; left: 8px; background: var(--ink); color: var(--page); font-weight: 700;
   font-size: 13px; min-width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; padding: 0 7px;
@@ -448,18 +459,47 @@ def top10_section(idx: int, cats: list[dict]) -> str:
             attrs_html = f"<span class='meta'>{e(attrs)}</span>" if attrs else ""
             hide = " hidden" if n > TOP_VISIBLE else ""
             cards.append(
-                f"<a class='topcard{' extra' if hide else ''}' href='{e(p['product_url'])}' target='_blank' rel='noopener'{hide}>"
+                f"<div class='topcard{' extra' if hide else ''}'{hide}>"
+                f"<a class='tlink' href='{e(p['product_url'])}' target='_blank' rel='noopener'>"
                 f"<span class='rk'>{n}</span>"
                 f"<img src='{e(p['image_url'])}' alt='' loading='lazy' referrerpolicy='no-referrer'>"
                 f"<div class='body'><span class='brand'>{e(p['brand'])}</span>"
                 f"<span class='name'>{e(p['product_name'])}</span>"
                 f"<span class='price'>{won(p['final_price'])}</span>"
-                f"<span class='meta'>{e(p['item_type'])} · 전체 {p['rank']}위</span>{attrs_html}</div></a>")
+                f"<span class='meta'>{e(p['item_type'])} · 전체 {p['rank']}위</span>{attrs_html}</div></a>"
+                f"{review_html(p.get('review'))}</div>")
         hidden = "hidden" if i else ""
         more = (f"<button type='button' class='more' data-open='더보기 · {TOP_VISIBLE + 1}~{len(c['products'])}위' "
                 f"data-close='접기'>더보기 · {TOP_VISIBLE + 1}~{len(c['products'])}위</button>") if extra > 0 else ""
         panels.append(f"<div class='seg-panel' id='{pid}' {hidden}><div class='topgrid'>{''.join(cards)}</div>{more}</div>")
     return f"<div><div class='seg' role='tablist'>{''.join(btns)}</div>{''.join(panels)}</div>"
+
+
+def review_html(r: dict | None) -> str:
+    """TOP 카드 아래 후기 요약: 설문 · 좋은 점 · 아쉬운 점 · 대표 후기."""
+    if not r:
+        return ""
+    if not r.get("sampled"):
+        return "<div class='rv'><span class='rv-none'>아직 후기가 없어요</span></div>"
+    head = f"후기 {r['total']:,}개"
+    if r.get("bad_pct") is not None:  # 3점 이하 후기 비율 (끝까지 못 셌으면 '이상')
+        head += f" · 3점 이하 {r['bad_pct']:.0f}%" + ("" if r.get("bad_exact") else " 이상")
+    survey = " · ".join(f"{e(s['attribute'])} {e(s['answer'])} {s['pct']}%" for s in (r.get("survey") or [])[:3])
+    pros = " · ".join(e(x["name"]) for x in r.get("pros") or [])
+    cons = " · ".join(e(x["name"]) for x in r.get("cons") or [])
+    rows = [f"<div class='rv-h'>{head}</div>"]
+    if survey:
+        rows.append(f"<div class='rv-s'>{survey}</div>")
+    rows.append(f"<div class='rv-p'><b>좋아요</b> {pros or '<span class=rv-none>특별히 많이 나온 말 없음</span>'}</div>")
+    rows.append(f"<div class='rv-c'><b>아쉬워요</b> {cons or '<span class=rv-none>눈에 띄는 불만 없음</span>'}</div>")
+    quotes = ""
+    if r.get("good_quote"):
+        quotes += f"<p class='q good'>“{e(r['good_quote'])}”</p>"
+    if r.get("bad_quote"):
+        quotes += f"<p class='q bad'>“{e(r['bad_quote'])}”</p>"
+    if quotes:
+        rows.append(f"<details><summary>대표 후기</summary>{quotes}</details>")
+    return f"<div class='rv'>{''.join(rows)}</div>"
 
 
 def chips_html(key: str, group: dict) -> str:
@@ -707,7 +747,8 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
         "인기": f"""
   <section class="card">
     <h2>카테고리별 인기 TOP {TOP_VISIBLE}</h2>
-    <p class="sub">카테고리를 눌러 바꿔 보세요. 맨 아래 '더보기'로 50위까지. 번호 = 카테고리 안 순위, '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위</p>
+    <p class="sub">카테고리를 눌러 바꿔 보세요. 맨 아래 '더보기'로 50위까지. 번호 = 카테고리 안 순위, '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위.
+    카드 아래 후기 요약(50위까지) = 도움순 후기 50개·별점 낮은 후기 최대 50개에서 자주 나온 표현(좋아요 = 4~5점 후기, 아쉬워요 = 3점 이하 후기)과 구매자 설문 결과.</p>
     {top10_section(gi, g.get('top_by_category', []))}
   </section>""",
         "기획": f"""

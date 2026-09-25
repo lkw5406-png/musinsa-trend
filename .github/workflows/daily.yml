@@ -16,7 +16,7 @@ concurrency:
 jobs:
   report:
     runs-on: ubuntu-latest
-    timeout-minutes: 120   # 새 상품이 많은 날 상세정보 수집이 길어질 수 있음
+    timeout-minutes: 180   # 새 상품이 많은 날 상세정보·후기 수집이 길어질 수 있음 (후기는 하루 최대 120개 ≈ 1시간)
     # 실패 알림: 이 작업이 실패하면 GitHub이 저장소 주인 계정 이메일로 자동 알림을 보냄 (별도 메일 설정 없음)
     steps:
       - uses: actions/checkout@v4

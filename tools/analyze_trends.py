@@ -18,6 +18,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+import review_summary
 from classify_attributes import GROUP_LABELS, GROUPS, classify
 from common import DETAILS_PATH, HISTORY_DIR, TMP_DIR, today_kst
 
@@ -99,6 +100,7 @@ def product_brief(p: dict) -> dict:
                  + attr_values(p, "color")[:3]}  # 여러 색 상품은 카드가 길어지지 않게 3색까지
 
 
+REVIEW_TOP_N = 50  # 후기 요약은 카테고리별 인기 TOP 50 전부 (더보기 포함)
 CATEGORY_ORDER = ["001", "002", "003", "100"]  # 상의, 아우터, 바지, 원피스/스커트
 ITEM_PROFILE_GROUPS = ["silhouette", "texture", "fit", "fiber", "color", "detail"]  # 사장님이 정한 순서
 SILHOUETTE_PROFILE_CODES = {"003"}  # 실루엣·기장은 팬츠류만 보여줌 (2026-09-25 사장님 결정)
@@ -134,14 +136,18 @@ def _median(values: list[int]) -> int | None:
     return values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) // 2
 
 
-def top_by_category(products: list[dict], n: int = 10) -> list[dict]:
-    """카테고리(상의/아우터/바지/원피스·스커트)별 인기 TOP n."""
+def top_by_category(products: list[dict], n: int = 10, reviews: dict | None = None) -> list[dict]:
+    """카테고리(상의/아우터/바지/원피스·스커트)별 인기 TOP n. 후기 요약(review_summary.py)이 있으면 같이 붙임."""
+    reviews = reviews or {}
     out = []
     for code in CATEGORY_ORDER:
         items = [p for p in products if p["category_code"] == code]
         if items:
-            out.append({"code": code, "name": items[0]["category_name"], "count": len(items),
-                        "products": [product_brief(p) for p in items[:n]]})
+            briefs = [product_brief(p) for p in items[:n]]
+            for b in briefs[:REVIEW_TOP_N]:
+                if b["product_id"] in reviews:
+                    b["review"] = reviews[b["product_id"]]
+            out.append({"code": code, "name": items[0]["category_name"], "count": len(items), "products": briefs})
     return out
 
 
@@ -270,7 +276,8 @@ def price_bands(products: list[dict]) -> dict:
     return {"labels": labels, "rows": rows, "totals": totals, "median": _median(all_prices)}
 
 
-def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: list[list[dict]]) -> dict:
+def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: list[list[dict]],
+                   reviews: dict | None = None) -> dict:
     has_week = len(history) >= MIN_WEEK_DAYS
     attributes = {}
     trend: dict[tuple[str, str], float] = {}     # 속성별 추세 (7일 대비 우선, 없으면 어제 대비)
@@ -371,7 +378,7 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         "headlines": headlines,
         "attributes": attributes,
         "category_mix": category_mix(today),
-        "top_by_category": top_by_category(today, n=50),  # 화면엔 20개, 더보기로 50개
+        "top_by_category": top_by_category(today, n=50, reviews=reviews),  # 화면엔 20개, 더보기로 50개
         "big_categories": by_big_category(today, yesterday),
         "item_types": item_type_profiles(today, yesterday),
         "price_bands": price_bands(today),
@@ -400,13 +407,15 @@ def analyze(date: str) -> dict:
             yesterday = products  # '어제 대비'는 정확히 어제 데이터가 있을 때만
 
     ids = {r["product_id"] for r in rows}
+    reviews = review_summary.load_summaries()
     return {
         "date": date,
         "scope": scope,
         "history_days": len(history),
         "has_yesterday": yesterday is not None,
         "detail_coverage": round(100 * sum(1 for i in ids if i in details) / max(1, len(ids)), 1),
-        "genders": {g: analyze_gender(today[g], yesterday[g] if yesterday else None, [h[g] for h in history])
+        "genders": {g: analyze_gender(today[g], yesterday[g] if yesterday else None, [h[g] for h in history],
+                                      reviews)
                     for g in GENDERS.values()},
     }
 

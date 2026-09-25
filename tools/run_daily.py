@@ -16,6 +16,7 @@ import analyze_trends
 import build_report
 import musinsa_fetch
 import product_details
+import review_summary
 import send_email
 from common import TMP_DIR, BlockedError, today_kst
 
@@ -28,6 +29,8 @@ def run(date: str, skip_fetch: bool) -> None:
         musinsa_fetch.save_csv(rows, date)
     print("2/4 상세정보 수집 (처음 보는 상품만)")
     product_details.update_details(date)
+    print("2-2/4 후기 요약 (카테고리별 인기 TOP 50, 7일에 한 번)")
+    review_summary.update_summaries(date)
     print("3/4 트렌드 분석")
     TMP_DIR.mkdir(exist_ok=True)
     result = analyze_trends.analyze(date)
