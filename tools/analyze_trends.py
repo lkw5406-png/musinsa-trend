@@ -100,6 +100,7 @@ def product_brief(p: dict) -> dict:
 
 CATEGORY_ORDER = ["001", "002", "003", "100"]  # 상의, 아우터, 바지, 원피스/스커트
 ITEM_PROFILE_GROUPS = ["silhouette", "texture", "fit", "fiber", "color", "detail"]  # 사장님이 정한 순서
+SILHOUETTE_PROFILE_CODES = {"003"}  # 실루엣·기장은 팬츠류만 보여줌 (2026-09-25 사장님 결정)
 ITEM_PROFILE_MIN = 3        # 이보다 적은 아이템 종류는 따로 정리하지 않음
 PRICE_BANDS = [(0, 30000, "3만원 미만"), (30000, 50000, "3~5만원"), (50000, 100000, "5~10만원"),
                (100000, 200000, "10~20만원"), (200000, float("inf"), "20만원 이상")]
@@ -165,6 +166,8 @@ def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[
         share = _weight_share(items, today)
         groups = {}
         for group in ITEM_PROFILE_GROUPS:
+            if group == "silhouette" and items[0]["category_code"] not in SILHOUETTE_PROFILE_CODES:
+                continue
             s = shares(items, group)
             known = sum(1 for p in items if attr_values(p, group))
             values = sorted(s.items(), key=lambda kv: -kv[1][0])[:4]

@@ -424,7 +424,7 @@ def item_type_section(profiles: list[dict]) -> str:
             for t in p["top_products"])
         rows = "".join(
             f"<div class='arow'><span class='al'>{e(label)}<small>파악 {p['groups'][key]['coverage']}%</small></span>"
-            f"{chips_html(key, p['groups'][key])}</div>" for key, label in PROFILE_ROWS)
+            f"{chips_html(key, p['groups'][key])}</div>" for key, label in PROFILE_ROWS if key in p["groups"])
         out.append(
             f"<div class='tcard'><div class='thead'><div class='tt'><h4>{e(p['name'])}</h4>"
             f"<div class='ts'>{p['count']}개 · 비중 {p['share']:.0f}%{median} · 최고 전체 {p['best_rank']}위{dod}</div></div>"
@@ -484,7 +484,7 @@ def gender_panel(idx: int, gender: str, g: dict, has_yesterday: bool) -> str:
   </section>
   <section class="card">
     <h2>아이템 종류별 정리</h2>
-    <p class="sub">아이템마다 실루엣·기장 / 원단 / 핏 / 소재 / 컬러 / 디테일 구성이에요. 칩의 % = 그 아이템 중 해당 속성 비중(순위 가중, 파악된 상품 기준)이고 칩 배경 길이도 같은 비율이에요. 3개 이상 오른 아이템만 보여줘요.</p>
+    <p class="sub">아이템마다 원단 / 핏 / 소재 / 컬러 / 디테일 구성이에요 (실루엣·기장은 팬츠류만). 칩의 % = 그 아이템 중 해당 속성 비중(순위 가중, 파악된 상품 기준)이고 칩 배경 길이도 같은 비율이에요. 3개 이상 오른 아이템만 보여줘요.</p>
     {item_type_section(g.get('item_types', []))}
   </section>
   <section class="card">
