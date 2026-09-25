@@ -117,6 +117,14 @@ def _price(p: dict) -> int | None:
         return None
 
 
+def _quartiles(values: list[int]) -> tuple[int, int] | None:
+    """가운데 50%가 들어가는 가격 범위 (아래 1/4 지점 ~ 위 1/4 지점)."""
+    values = sorted(values)
+    if len(values) < 4:
+        return None
+    return values[len(values) // 4], values[(3 * len(values) - 1) // 4]
+
+
 def _median(values: list[int]) -> int | None:
     values = sorted(values)
     if not values:
@@ -174,6 +182,7 @@ def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[
             groups[group] = {"coverage": round(100 * known / len(items)),
                              "values": [{"name": v, "pct": round(pct, 1), "count": c} for v, (pct, c) in values]}
         prices = [x for x in (_price(p) for p in items) if x]
+        q = _quartiles(prices)
         profiles.append({
             "name": item_type,
             "category_code": items[0]["category_code"],
@@ -182,9 +191,11 @@ def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[
             "share": round(share, 1),
             "dod_pp": round(share - prev_share.get(item_type, 0.0), 1) if yesterday else None,
             "median_price": _median(prices),
+            "price_low": q[0] if q else None,
+            "price_high": q[1] if q else None,
             "best_rank": min(p["rank"] for p in items),
             "groups": groups,
-            "top_products": [product_brief(p) for p in items[:3]],
+            "top_products": [product_brief(p) for p in items[:6]],  # 디자인 참고 탭의 대표 사진
         })
     profiles.sort(key=lambda x: (CATEGORY_ORDER.index(x["category_code"]) if x["category_code"] in CATEGORY_ORDER else 9,
                                  -x["share"]))
@@ -211,7 +222,8 @@ def price_bands(products: list[dict]) -> dict:
         prices = [x for x in (_price(p) for p in items) if x]
         rows.append({"name": items[0]["category_name"], "counts": counts, "median": _median(prices)})
     totals = [sum(r["counts"][i] for r in rows) for i in range(len(labels))]
-    return {"labels": labels, "rows": rows, "totals": totals}
+    all_prices = [x for x in (_price(p) for p in products) if x]
+    return {"labels": labels, "rows": rows, "totals": totals, "median": _median(all_prices)}
 
 
 def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: list[list[dict]]) -> dict:
@@ -306,7 +318,7 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
                                   "value": f"+{t:.1f}%p", "note": f"비중 {best['share']:.0f}% · {trend_label}"})
         elif rows:
             headlines.append({"kind": "가장 많은", "group": GROUP_LABELS[group], "name": rows[0]["name"],
-                              "value": f"{rows[0]['share']:.0f}%", "note": "순위 가중 비중"})
+                              "value": f"{rows[0]['share']:.0f}%", "note": "인기 비중"})
 
     return {
         "count": len(today),

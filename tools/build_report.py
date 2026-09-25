@@ -20,16 +20,6 @@ from html import escape
 
 from common import DOCS_DIR, TMP_DIR, USER_AGENT, today_kst
 
-CHART_GROUPS = [
-    ("item_type", "아이템 종류"),
-    ("fit", "핏"),
-    ("silhouette", "실루엣·기장"),
-    ("fiber", "소재(주원료)"),
-    ("texture", "원단·가공"),
-    ("color", "컬러"),
-    ("thickness", "두께"),
-    ("detail", "디테일"),
-]
 CHART_ROWS = 8
 SCOPE_TEXT = {
     "overall": "무신사 남성·여성 전체 랭킹(최근 1일)에서 의류만 상위 300개 · 상의/아우터/바지/원피스·스커트",
@@ -71,12 +61,24 @@ header p { margin: 0; color: var(--ink-2); }
 .datepick select { font: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: var(--surface);
   border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; min-width: 170px; }
 .note { font-size: 13px; color: var(--muted); margin-top: 8px; }
-.tabs { display: flex; gap: 6px; margin: 24px 0 20px; flex-wrap: wrap; position: sticky;
-  top: env(safe-area-inset-top, 0px); background: var(--page); padding: 8px 0; z-index: 5; }
-.tabs button { font: inherit; font-weight: 600; padding: 8px 18px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); }
+/* 상단 바: 성별 전환 + 목적별 탭 (스크롤해도 위에 붙어 있음) */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--page);
+  margin: 22px 0 18px; padding: 10px 0; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
+  border-bottom: 1px solid var(--grid); }
+.gswitch { display: inline-flex; flex: none; padding: 3px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); }
+.gswitch button { font: inherit; font-weight: 700; padding: 6px 16px; border: 0; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--ink-2); }
+.gswitch button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.tabs { display: flex; gap: 6px; flex: 1 1 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { flex: none; white-space: nowrap; font: inherit; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+  cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); }
+.tabs button small { font-size: 11px; color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
 .tabs button[aria-selected="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
-.tabs button:focus-visible, .row:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tabs button[aria-selected="true"] small { color: inherit; opacity: 0.7; }
+.tabs button:focus-visible, .gswitch button:focus-visible, .row:focus-visible, select:focus-visible,
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   padding: 20px; margin-bottom: 18px; }
 section.card h2 { font-size: 18px; margin: 0 0 4px; }
@@ -156,12 +158,10 @@ td a:hover { text-decoration: underline; }
 .type-cat { font-size: 15px; margin: 22px 0 10px; color: var(--ink-2); }
 .type-cat:first-of-type { margin-top: 4px; }
 .tcard { border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
-.thead { display: flex; gap: 12px; align-items: flex-start; }
-.thead .tt { flex: 1; min-width: 0; }
-.thead h4 { margin: 0; font-size: 16px; }
-.thead .ts { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.thumbs { display: flex; gap: 4px; }
-.thumbs img { width: 40px; height: 48px; object-fit: cover; border-radius: 4px; background: var(--grid); display: block; }
+.tcard h4 { margin: 0; font-size: 16px; }
+.tcard .ts { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.gallery { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.gallery img { width: 100%; aspect-ratio: 1 / 1.2; object-fit: cover; border-radius: 6px; background: var(--grid); display: block; }
 .share-meter { height: 6px; background: var(--grid); border-radius: 3px; overflow: hidden; }
 .share-meter span { display: block; height: 100%; background: var(--bar); border-radius: 0 3px 3px 0; }
 .arow { display: grid; grid-template-columns: 78px 1fr; gap: 8px; align-items: start; font-size: 12px; }
@@ -179,23 +179,75 @@ td a:hover { text-decoration: underline; }
 /* 가격대 */
 .medians { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin-top: 12px; }
 .medians b { color: var(--ink); font-variant-numeric: tabular-nums; }
+/* 오늘 요약 */
+.brief { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.brief li::marker { color: var(--muted); }
+/* 아이템 순위표 */
+.rt td { white-space: nowrap; }
+.rt td:nth-child(3) { white-space: normal; min-width: 110px; }
+.mini { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+.mini-track { flex: 1; height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.mini-track span { display: block; height: 100%; background: var(--bar); }
+.mini b { font-variant-numeric: tabular-nums; min-width: 32px; text-align: right; }
+tr.hi td { background: color-mix(in srgb, var(--up-text) 9%, transparent); }
+/* 컬러 팔레트 */
+.cov { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+.palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(128px, 100%), 1fr)); gap: 10px; }
+.pcell { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.pcell .sq { height: 60px; border-bottom: 1px solid var(--border); }
+.pcell .pb { padding: 8px 10px 10px; display: flex; flex-direction: column; font-size: 13px; }
+.pcell .pv { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pcell .pn { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+/* 아이템별 가격 */
+.pt tr.grp td { font-weight: 700; color: var(--ink-2); padding-top: 14px; border-bottom: 1px solid var(--axis); }
+.pt td.num { white-space: nowrap; }
+.pr-cell { min-width: 140px; width: 34%; }
+.prange { position: relative; height: 10px; background: var(--grid); border-radius: 5px; }
+.prange span { position: absolute; top: 0; bottom: 0; background: var(--chip); border: 1px solid var(--accent); border-radius: 5px; }
+.prange i { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
 footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 70ch; }
 #tip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--page);
   font-size: 12px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; max-width: 260px; }
 @media (max-width: 480px) {
   .row, .chg-head { grid-template-columns: 84px 1fr 38px 52px; }
   .wrap { padding: 20px 16px 48px; }
+  .gallery { grid-template-columns: repeat(3, 1fr); }
+  .gswitch button { padding: 6px 12px; }
+  .tabs { flex-basis: 100%; }
 }
 """
 
 JS = """
-const tabs = document.querySelectorAll('.tabs button');
-tabs.forEach(b => b.addEventListener('click', () => {
-  tabs.forEach(t => t.setAttribute('aria-selected', t === b));
-  document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== b.dataset.panel);
-  try { localStorage.setItem('mss-tab', b.dataset.panel); } catch (e) {}
-}));
-try { const s = localStorage.getItem('mss-tab'); const b = s && document.querySelector(`[data-panel="${s}"]`); if (b) b.click(); } catch (e) {}
+// 성별 × 목적 탭. 주소 끝(#여성-소재컬러)으로 화면 공유, 마지막 화면은 이 브라우저에 기억
+const G = [...document.querySelectorAll('.gswitch button')], T = [...document.querySelectorAll('.tabs button')];
+let curG = G.length ? G[0].dataset.g : '0', curT = T.length ? T[0].dataset.t : '';
+function viewHash() { const b = G.find(x => x.dataset.g === curG); return '#' + encodeURIComponent((b ? b.dataset.name : '') + '-' + curT); }
+function apply(save) {
+  G.forEach(b => b.setAttribute('aria-pressed', b.dataset.g === curG));
+  T.forEach(b => b.setAttribute('aria-selected', b.dataset.t === curT));
+  document.querySelectorAll('.panel').forEach(p => p.hidden = !(p.dataset.g === curG && p.dataset.t === curT));
+  if (save) {
+    try { history.replaceState(null, '', viewHash()); } catch (e) {}
+    try { localStorage.setItem('mss-view', viewHash()); } catch (e) {}
+  }
+}
+function fromHash(h) {
+  if (!h) return false;
+  let s; try { s = decodeURIComponent(h.replace(/^#/, '')); } catch (e) { return false; }
+  const i = s.lastIndexOf('-'); if (i < 0) return false;
+  const gb = G.find(b => b.dataset.name === s.slice(0, i)), tb = T.find(b => b.dataset.t === s.slice(i + 1));
+  if (!gb || !tb) return false;
+  curG = gb.dataset.g; curT = tb.dataset.t; return true;
+}
+function toTop() { const h = document.querySelector('header'); const y = h.offsetTop + h.offsetHeight;
+  if (window.scrollY > y) window.scrollTo(0, y); }
+G.forEach(b => b.addEventListener('click', () => { curG = b.dataset.g; apply(true); }));
+T.forEach(b => b.addEventListener('click', () => { curT = b.dataset.t; apply(true); toTop();
+  b.scrollIntoView({block: 'nearest', inline: 'nearest'}); }));
+let saved = null; try { saved = localStorage.getItem('mss-view'); } catch (e) {}
+fromHash(location.hash) || fromHash(saved);
+apply(false);
+window.addEventListener('hashchange', () => { if (fromHash(location.hash)) apply(false); });
 
 const tip = document.getElementById('tip');
 function show(e) { const t = e.currentTarget.dataset.tip; if (!t) return; tip.innerHTML = t; tip.hidden = false; move(e); }
@@ -231,7 +283,7 @@ if (pick) {
     .then(fill).catch(() => {});
   pick.addEventListener('change', () => {
     const d = pick.value, latest = pick.options[0] && pick.options[0].value;
-    location.href = d === latest ? base + 'index.html' : base + 'reports/' + d + '.html';
+    location.href = (d === latest ? base + 'index.html' : base + 'reports/' + d + '.html') + viewHash();
   });
 }
 """
@@ -290,7 +342,7 @@ def rec_cards(recs: list[dict]) -> str:
 
 def share_chart(title: str, group: dict, trend_label: str, has_trend: bool) -> str:
     rows = group["rows"][:CHART_ROWS]
-    cov = f"상품 {group['coverage']:.0f}%에서 파악 · 파악된 상품 중 비중"
+    cov = f"상품 {group['coverage']:.0f}%에서 파악 · 파악된 상품 중 인기 비중"
     if not rows:
         return f'<div class="chart"><h3>{e(title)}</h3><p class="cov">{cov}</p><p class="empty">데이터가 부족해요.</p></div>'
     scale = max(10.0, max(r["share"] for r in rows))
@@ -359,7 +411,7 @@ def mix_bar(mix: list[dict]) -> str:
     for m in mix:
         color = CAT_COLORS.get(m["code"], "var(--c1)")
         pct = 100 * m["count"] / total
-        tip = f"<b>{m['name']}</b><br>{m['count']}개 ({pct:.0f}%) · 순위 가중 비중 {m['share']:.0f}%"
+        tip = f"<b>{m['name']}</b><br>{m['count']}개 ({pct:.0f}%) · 인기 비중 {m['share']:.0f}%"
         segs.append(f"<span style='flex:{m['count']};background:{color}' tabindex='0' data-tip='{e(tip)}'></span>")
         legend.append(f"<span><i style='background:{color}'></i>{e(m['name'])} <b>{m['count']}개</b> ({pct:.0f}%)</span>")
     return (f"<div class='mix'><h3>카테고리 구성</h3><div class='mixbar' role='img' aria-label='카테고리 구성'>"
@@ -399,40 +451,10 @@ def chips_html(key: str, group: dict) -> str:
     for v in vals:
         pct = min(100.0, v["pct"])
         sw = swatch(v["name"]) if key == "color" else ""
-        tip = f"<b>{v['name']}</b><br>이 아이템 중 {v['pct']:.0f}% ({v['count']}개, 순위 가중)"
+        tip = f"<b>{v['name']}</b><br>이 아이템 중 인기 비중 {v['pct']:.0f}% ({v['count']}개)"
         out.append(f"<span class='chip' tabindex='0' data-tip='{e(tip)}'><i class='fill' style='width:{pct:.0f}%'></i>"
                    f"<span>{sw}{e(v['name'])} <b>{v['pct']:.0f}%</b></span></span>")
     return f"<div class='chips'>{''.join(out)}</div>"
-
-
-def item_type_section(profiles: list[dict]) -> str:
-    if not profiles:
-        return '<p class="empty">데이터가 없어요.</p>'
-    max_share = max(p["share"] for p in profiles) or 1
-    out, current = [], None
-    for p in profiles:
-        if p["category_name"] != current:
-            if current is not None:
-                out.append("</div>")
-            current = p["category_name"]
-            out.append(f"<h3 class='type-cat'>{e(current)}</h3><div class='types'>")
-        dod = f" · 어제 대비 {change_html(p['dod_pp'])}%p" if p.get("dod_pp") is not None else ""
-        median = f" · 중간 가격 {won(p['median_price'])}" if p.get("median_price") else ""
-        thumbs = "".join(
-            f"<a href='{e(t['product_url'])}' target='_blank' rel='noopener' title='{e(t['product_name'])}'>"
-            f"<img src='{e(t['image_url'])}' alt='' loading='lazy' referrerpolicy='no-referrer'></a>"
-            for t in p["top_products"])
-        rows = "".join(
-            f"<div class='arow'><span class='al'>{e(label)}<small>파악 {p['groups'][key]['coverage']}%</small></span>"
-            f"{chips_html(key, p['groups'][key])}</div>" for key, label in PROFILE_ROWS if key in p["groups"])
-        out.append(
-            f"<div class='tcard'><div class='thead'><div class='tt'><h4>{e(p['name'])}</h4>"
-            f"<div class='ts'>{p['count']}개 · 비중 {p['share']:.0f}%{median} · 최고 전체 {p['best_rank']}위{dod}</div></div>"
-            f"<div class='thumbs'>{thumbs}</div></div>"
-            f"<div class='share-meter' title='순위 가중 비중'><span style='width:{100 * p['share'] / max_share:.0f}%'></span></div>"
-            f"{rows}</div>")
-    out.append("</div>")
-    return "".join(out)
 
 
 def price_section(pb: dict | None) -> str:
@@ -452,64 +474,254 @@ def price_section(pb: dict | None) -> str:
     return f"<div>{''.join(rows)}<div class='medians'>카테고리별 중간 가격: {medians}</div></div>"
 
 
-def gender_panel(idx: int, gender: str, g: dict, has_yesterday: bool) -> str:
-    charts = "".join(share_chart(title, g["attributes"][key], g["trend_label"], g["has_trend"])
-                     for key, title in CHART_GROUPS)
+PURPOSES = [  # 목적별 탭 (주소 끝 #여성-소재컬러 처럼 공유 가능). 2026-09-25 디자이너 실무용으로 개편
+    ("요약", "오늘 요약"),
+    ("기획", "무엇을 만들까"),
+    ("디자인", "디자인 참고"),
+    ("소재컬러", "소재·컬러"),
+    ("가격", "가격"),
+    ("동향", "시장 동향"),
+]
+DESIGN_CHARTS = [("fit", "핏"), ("silhouette", "실루엣·기장"), ("detail", "디테일")]
+MATERIAL_CHARTS = [("texture", "원단·가공"), ("fiber", "소재(주원료)"), ("thickness", "두께")]
+BRIEF_MIN_PCT = 30  # 요약 문장에 넣을 아이템 속성의 최소 비중
+
+
+def _rows(g: dict, group: str, n: int) -> list[dict]:
+    return [r for r in g["attributes"][group]["rows"] if not r["name"].startswith("기타")][:n]
+
+
+def brief_lines(g: dict) -> str:
+    """오늘 요약: 회의에 그대로 옮겨 쓸 수 있는 문장 몇 줄."""
+    types = sorted(g.get("item_types", []), key=lambda t: -t["share"])
+    lines = []
+    if types:
+        rest = ", ".join(e(t["name"]) for t in types[1:3])
+        lines.append(f"가장 인기 있는 아이템은 <b>{e(types[0]['name'])}</b>(인기 비중 {types[0]['share']:.0f}%)"
+                     + (f", 이어서 {rest}." if rest else "."))
+        top = types[0]
+        spec = [f"{e(label)} <b>{e(v['name'])}</b> {v['pct']:.0f}%" for key, label in PROFILE_ROWS if key in top["groups"]
+                for v in top["groups"][key]["values"][:1] if v["pct"] >= BRIEF_MIN_PCT]
+        if spec:
+            lines.append(f"{e(top['name'])} 특징: " + " · ".join(spec))
+    rising = sorted((t for t in types if (t.get("dod_pp") or 0) >= 0.5), key=lambda t: -t["dod_pp"])[:3]
+    if rising:
+        lines.append("어제보다 오른 아이템: " + ", ".join(
+            f"<b>{e(t['name'])}</b> <span class='up-t'>▲{t['dod_pp']:.1f}%p</span>" for t in rising))
+    colors = _rows(g, "color", 3)
+    if colors:
+        lines.append("많이 팔린 컬러: " + " · ".join(f"{swatch(r['name'])}{e(r['name'])} {r['share']:.0f}%" for r in colors))
+    textures = _rows(g, "texture", 3)
+    if textures:
+        lines.append("많이 쓰인 원단: " + " · ".join(f"{e(r['name'])} {r['share']:.0f}%" for r in textures))
+    pb = g.get("price_bands") or {}
+    if pb.get("totals") and sum(pb["totals"]):
+        i = max(range(len(pb["totals"])), key=lambda k: pb["totals"][k])
+        pct = 100 * pb["totals"][i] / sum(pb["totals"])
+        median = f"중간 가격 <b>{won(pb['median'])}</b> · " if pb.get("median") else ""
+        lines.append(f"{median}가장 많은 가격대 {e(pb['labels'][i])} ({pct:.0f}%)")
+    if not lines:
+        return '<p class="empty">데이터가 없어요.</p>'
+    return "<ul class='brief'>" + "".join(f"<li>{x}</li>" for x in lines) + "</ul>"
+
+
+def item_rank_table(types: list[dict], has_yesterday: bool) -> str:
+    """무엇을 만들까: 아이템 종류를 인기 비중 순으로. 어제보다 0.5%p 이상 오른 아이템은 강조."""
+    if not types:
+        return '<p class="empty">데이터가 없어요.</p>'
+    types = sorted(types, key=lambda t: -t["share"])
+    scale = max(t["share"] for t in types) or 1
+    body = []
+    for n, t in enumerate(types, 1):
+        first = t["top_products"][0] if t["top_products"] else None
+        img = (f"<a href='{e(first['product_url'])}' target='_blank' rel='noopener'>"
+               f"<img src='{e(first['image_url'])}' alt='' loading='lazy' referrerpolicy='no-referrer'></a>") if first else ""
+        hi = " class='hi'" if (t.get("dod_pp") or 0) >= 0.5 else ""
+        body.append(
+            f"<tr{hi}><td class='num'>{n}</td><td>{img}</td>"
+            f"<td><b>{e(t['name'])}</b><br><small style='color:var(--muted)'>{e(t['category_name'])}</small></td>"
+            f"<td><div class='mini'><span class='mini-track'><span style='width:{100 * t['share'] / scale:.0f}%'></span></span>"
+            f"<b>{t['share']:.0f}%</b></div></td>"
+            f"<td class='num'>{change_html(t.get('dod_pp')) if has_yesterday else '–'}</td>"
+            f"<td class='num'>{t['count']}개</td><td class='num'>{won(t.get('median_price'))}</td>"
+            f"<td class='num'>{t['best_rank']}위</td></tr>")
+    head = ("<th class='num'>#</th><th></th><th>아이템</th><th>인기 비중</th><th class='num'>어제 대비(%p)</th>"
+            "<th class='num'>상품 수</th><th class='num'>중간 가격</th><th class='num'>최고 전체 순위</th>")
+    return (f"<div class='table-wrap'><table class='rt'><thead><tr>{head}</tr></thead>"
+            f"<tbody>{''.join(body)}</tbody></table></div>")
+
+
+def item_card(p: dict, max_share: float) -> str:
+    dod = f" · 어제 대비 {change_html(p['dod_pp'])}%p" if p.get("dod_pp") is not None else ""
+    median = f" · 중간 가격 {won(p['median_price'])}" if p.get("median_price") else ""
+    gallery = "".join(
+        f"<a href='{e(t['product_url'])}' target='_blank' rel='noopener' title='{e(t['brand'])} {e(t['product_name'])}'>"
+        f"<img src='{e(t['image_url'])}' alt='' loading='lazy' referrerpolicy='no-referrer'></a>"
+        for t in p["top_products"])
+    rows = "".join(
+        f"<div class='arow'><span class='al'>{e(label)}<small>파악 {p['groups'][key]['coverage']}%</small></span>"
+        f"{chips_html(key, p['groups'][key])}</div>" for key, label in PROFILE_ROWS if key in p["groups"])
+    return (f"<div class='tcard'><div class='tt'><h4>{e(p['name'])}</h4>"
+            f"<div class='ts'>{p['count']}개 · 인기 비중 {p['share']:.0f}%{median} · 최고 전체 {p['best_rank']}위{dod}</div></div>"
+            f"<div class='share-meter' title='인기 비중'><span style='width:{100 * p['share'] / max_share:.0f}%'></span></div>"
+            f"<div class='gallery'>{gallery}</div>{rows}</div>")
+
+
+def design_section(gi: int, profiles: list[dict]) -> str:
+    """디자인 참고: 카테고리 버튼으로 걸러 보는 아이템별 스펙 카드."""
+    if not profiles:
+        return '<p class="empty">데이터가 없어요.</p>'
+    max_share = max(p["share"] for p in profiles) or 1
+    cats: dict[str, list[dict]] = {}
+    for p in profiles:
+        cats.setdefault(p["category_name"], []).append(p)
+    btns, panels = [], []
+    for i, (name, items) in enumerate(cats.items()):
+        pid = f"dz-{gi}-{i}"
+        btns.append(f"<button type='button' data-show='{pid}' aria-selected='{str(i == 0).lower()}'>"
+                    f"{e(name)} <small>({len(items)})</small></button>")
+        cards = "".join(item_card(p, max_share) for p in items)
+        panels.append(f"<div class='seg-panel' id='{pid}' {'hidden' if i else ''}><div class='types'>{cards}</div></div>")
+    return f"<div><div class='seg' role='tablist'>{''.join(btns)}</div>{''.join(panels)}</div>"
+
+
+def palette(group: dict, has_trend: bool) -> str:
+    rows = [r for r in group["rows"] if r["name"] in COLOR_HEX]
+    if not rows:
+        return '<p class="empty">데이터가 부족해요.</p>'
+    cells = []
+    for r in rows:
+        change = r["week_pp"] if r["week_pp"] is not None else r["dod_pp"]
+        chg = f"<span class='pc'>{change_html(change)}%p</span>" if has_trend else ""
+        cells.append(f"<div class='pcell'><div class='sq' style='background:{COLOR_HEX[r['name']]}'></div>"
+                     f"<div class='pb'><span>{e(r['name'])}</span><span class='pv'>{r['share']:.0f}%</span>"
+                     f"<span class='pn'>{r['count']}개{chg}</span></div></div>")
+    return (f"<p class='cov'>상품 {group['coverage']:.0f}%에서 파악 · 파악된 상품 중 인기 비중</p>"
+            f"<div class='palette'>{''.join(cells)}</div>")
+
+
+def item_price_table(types: list[dict]) -> str:
+    """아이템별 가격: 중간 가격과 주로 팔리는 가격 범위(가운데 50%)를 막대로."""
+    rows = [t for t in types if t.get("median_price")]
+    if not rows:
+        return '<p class="empty">데이터가 없어요.</p>'
+    top = max((t.get("price_high") or t["median_price"]) for t in rows) or 1
+    body, current = [], None
+    for t in rows:
+        if t["category_name"] != current:
+            current = t["category_name"]
+            body.append(f"<tr class='grp'><td colspan='4'>{e(current)}</td></tr>")
+        lo, hi = t.get("price_low"), t.get("price_high")
+        rng = f"{won(lo)} ~ {won(hi)}" if lo and hi else "<span class='flat-t'>상품이 적어 생략</span>"
+        bar = ""
+        if lo and hi:
+            bar = (f"<span style='left:{100 * lo / top:.1f}%;width:{max(1.0, 100 * (hi - lo) / top):.1f}%'></span>")
+        bar += f"<i style='left:{100 * t['median_price'] / top:.1f}%'></i>"
+        body.append(f"<tr><td><b>{e(t['name'])}</b> <small style='color:var(--muted)'>{t['count']}개</small></td>"
+                    f"<td class='num'><b>{won(t['median_price'])}</b></td><td class='num'>{rng}</td>"
+                    f"<td class='pr-cell'><div class='prange'>{bar}</div></td></tr>")
+    head = "<th>아이템</th><th class='num'>중간 가격</th><th class='num'>주로 팔리는 가격</th><th>분포</th>"
+    return (f"<div class='table-wrap'><table class='pt'><thead><tr>{head}</tr></thead>"
+            f"<tbody>{''.join(body)}</tbody></table></div>")
+
+
+def charts_html(g: dict, groups: list[tuple[str, str]]) -> str:
+    return "".join(share_chart(title, g["attributes"][key], g["trend_label"], g["has_trend"]) for key, title in groups)
+
+
+def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
     if g["has_trend"]:
-        chart_sub = (f"막대 = 순위 가중 비중(1위일수록 크게 반영). 오른쪽 숫자 = {e(g['trend_label'])} 비중 변화(%p). "
+        chart_sub = (f"막대 = 인기 비중(순위가 높을수록 크게 반영). 오른쪽 숫자 = {e(g['trend_label'])} 변화(%p). "
                      "막대에 마우스를 올리면 자세한 수치.")
-        head_sub = f"{e(g['trend_label'])} 비중이 가장 많이 늘어난 속성"
+        head_sub = f"{e(g['trend_label'])} 가장 많이 늘어난 속성"
     else:
-        chart_sub = "막대 = 순위 가중 비중(1위일수록 크게 반영). 어제 대비 변화는 내일부터 표시돼요."
-        head_sub = "오늘 랭킹에서 비중이 가장 큰 속성 (추세는 기록이 쌓이면 표시)"
+        chart_sub = "막대 = 인기 비중(순위가 높을수록 크게 반영). 어제 대비 변화는 기록이 쌓이면 표시돼요."
+        head_sub = "오늘 랭킹에서 비중이 가장 큰 속성"
     no_yday = "어제 기록이 없어 내일부터 표시돼요."
     trend_word = "뜨는" if g["has_trend"] else "인기"
-    return f"""
-<div class="panel" id="p{idx}" role="tabpanel" {'hidden' if idx else ''}>
+    types = g.get("item_types", [])
+    body = {
+        "요약": f"""
   <section class="card">
-    <h2>{e(gender)} 한눈에 보기</h2>
-    <p class="sub">{e(head_sub)} · 1일 랭킹 {g['count']}개 상품 기준</p>
+    <h2>{e(gender)} · 오늘 요약</h2>
+    <p class="sub">1일 랭킹 의류 {g['count']}개 기준 · 회의 자료에 그대로 옮겨 쓸 수 있게 정리했어요.</p>
+    {brief_lines(g)}
+  </section>
+  <section class="card">
+    <h2>핵심 지표</h2>
+    <p class="sub">{head_sub}</p>
     {headline_cards(g['headlines'])}
     {mix_bar(g.get('category_mix', []))}
+  </section>""",
+        "기획": f"""
+  <section class="card">
+    <h2>아이템 순위</h2>
+    <p class="sub">어떤 아이템이 잘 팔리는지 인기 비중 순으로. 초록 줄 = 어제보다 0.5%p 이상 오른 아이템. 3개 이상 오른 아이템만.</p>
+    {item_rank_table(types, has_yesterday)}
   </section>
   <section class="card">
     <h2>추천 아이템</h2>
     <p class="sub">순위가 높고 {trend_word} 속성을 많이 가진 상품 (아이템 종류별 1개)</p>
     {rec_cards(g['recommendations'])}
+  </section>""",
+        "디자인": f"""
+  <section class="card">
+    <h2>아이템별 스펙</h2>
+    <p class="sub">카테고리를 눌러 바꿔 보세요. 사진 = 그 아이템에서 잘 팔리는 순서. 칩의 % = 그 아이템 중 해당 속성의 인기 비중(파악된 상품 기준). 실루엣·기장은 팬츠류만.</p>
+    {design_section(gi, types)}
   </section>
   <section class="card">
-    <h2>카테고리별 인기 TOP 10</h2>
-    <p class="sub">카테고리를 눌러 바꿔 보세요. 번호 = 카테고리 안 순위, '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위</p>
-    {top10_section(idx, g.get('top_by_category', []))}
-  </section>
-  <section class="card">
-    <h2>아이템 종류별 정리</h2>
-    <p class="sub">아이템마다 원단 / 핏 / 소재 / 컬러 / 디테일 구성이에요 (실루엣·기장은 팬츠류만). 칩의 % = 그 아이템 중 해당 속성 비중(순위 가중, 파악된 상품 기준)이고 칩 배경 길이도 같은 비율이에요. 3개 이상 오른 아이템만 보여줘요.</p>
-    {item_type_section(g.get('item_types', []))}
-  </section>
-  <section class="card">
-    <h2>전체 속성 순위</h2>
+    <h2>전체 핏 · 실루엣 · 디테일</h2>
     <p class="sub">{chart_sub}</p>
-    <div class="charts">{charts}</div>
+    <div class="charts">{charts_html(g, DESIGN_CHARTS)}</div>
+  </section>""",
+        "소재컬러": f"""
+  <section class="card">
+    <h2>컬러 팔레트</h2>
+    <p class="sub">잘 팔리는 컬러를 인기 비중 순으로.{' 작은 숫자 = ' + e(g['trend_label']) + ' 변화.' if g['has_trend'] else ''}</p>
+    {palette(g['attributes']['color'], g['has_trend'])}
+  </section>
+  <section class="card">
+    <h2>원단 · 소재 · 두께</h2>
+    <p class="sub">{chart_sub} 소재 = 상품정보제공고시의 겉감 주원료, 두께 = 판매자 입력.</p>
+    <div class="charts">{charts_html(g, MATERIAL_CHARTS)}</div>
+  </section>""",
+        "가격": f"""
+  <section class="card">
+    <h2>아이템별 가격</h2>
+    <p class="sub">굵은 숫자 = 중간 가격. 주로 팔리는 가격 = 가운데 절반의 상품이 들어가는 범위. 막대의 세로선 = 중간 가격.</p>
+    {item_price_table(types)}
   </section>
   <section class="card">
     <h2>가격대 분포</h2>
     <p class="sub">막대 = 상품 수. 마우스를 올리면 카테고리별 개수가 나와요.</p>
     {price_section(g.get('price_bands'))}
+  </section>""",
+        "동향": f"""
+  <section class="card">
+    <h2>카테고리별 인기 TOP 10</h2>
+    <p class="sub">카테고리를 눌러 바꿔 보세요. 번호 = 카테고리 안 순위, '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위</p>
+    {top10_section(gi, g.get('top_by_category', []))}
   </section>
   <section class="card two">
     {product_table('어제보다 순위가 크게 오른 상품', g['movers'], extra_col='변화', empty=no_yday if not has_yesterday else '')}
     {product_table('오늘 새로 TOP 50에 진입', g['new_entries'], empty=no_yday if not has_yesterday else '')}
-  </section>
-</div>"""
+  </section>""",
+    }
+    return "".join(
+        f'<div class="panel" data-g="{gi}" data-t="{key}" role="tabpanel" {"" if gi == 0 and n == 0 else "hidden"}>{body[key]}</div>'
+        for n, (key, _) in enumerate(PURPOSES))
 
 
 def render(a: dict, dates: list[str] | None, base: str) -> str:
     genders = list(a["genders"].items())
-    tabs = "".join(
-        f'<button type="button" role="tab" data-panel="p{i}" aria-selected="{str(i == 0).lower()}">{e(name)}</button>'
+    gswitch = "".join(
+        f'<button type="button" data-g="{i}" data-name="{e(name)}" aria-pressed="{str(i == 0).lower()}">{e(name)}</button>'
         for i, (name, _) in enumerate(genders))
-    panels = "".join(gender_panel(i, name, g, a["has_yesterday"]) for i, (name, g) in enumerate(genders))
+    tabs = "".join(
+        f'<button type="button" role="tab" data-t="{key}" aria-selected="{str(n == 0).lower()}">'
+        f'<small>{n + 1}</small>{e(label)}</button>' for n, (key, label) in enumerate(PURPOSES))
+    panels = "".join(gender_panels(i, name, g, a["has_yesterday"]) for i, (name, g) in enumerate(genders))
     history_note = (f"최근 {a['history_days']}일 기록과 비교했어요." if a["history_days"]
                     else "첫 기록이라 어제·7일 비교는 기록이 쌓이면 표시돼요.")
     date_picker = ""
@@ -531,13 +743,17 @@ def render(a: dict, dates: list[str] | None, base: str) -> str:
     </div>
     {date_picker}
   </header>
-  <nav class="tabs" role="tablist">{tabs}</nav>
+  <div class="topbar">
+    <div class="gswitch" role="group" aria-label="성별">{gswitch}</div>
+    <nav class="tabs" role="tablist" aria-label="목적">{tabs}</nav>
+  </div>
   {panels}
   <footer>
     <p>매일 오전 10시 기준 무신사 전체 랭킹(최근 1일)을 모아 날짜별로 쌓아요. 남성·여성은 무신사 성별 랭킹 그대로예요.
-    비중은 순위가 높을수록 크게 반영(의류 중 1위=1, 300위≈0)하고, 속성을 파악한 상품끼리 비교해요.
+    '인기 비중'은 순위가 높을수록 크게 반영한 비중(의류 중 1위=1, 300위≈0)이고, 속성을 파악한 상품끼리 비교해요.
     '전체 순위'는 신발·가방 등을 포함한 무신사 전체 랭킹 순위예요.
-    핏·두께는 판매자가 입력한 값, 소재는 상품정보제공고시의 겉감 주원료, 실루엣·원단은 상품명과 상세 설명의 키워드로 분류해요.</p>
+    핏·두께는 판매자가 입력한 값, 소재는 상품정보제공고시의 겉감 주원료, 실루엣·원단은 상품명·상세 설명·실측 사이즈표로 분류해요.
+    보고 있는 화면의 주소를 복사하면 같은 성별·탭이 열려요.</p>
   </footer>
 </div>
 <div id="tip" hidden></div>
