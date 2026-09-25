@@ -12,7 +12,7 @@
 - 컬러: 상품명(+영문명) 키워드 → 판매 옵션의 색상 목록 (여러 색 상품은 판매 중인 색 모두)
 - 디테일: 상품명(+영문명) 키워드
 - 두께: 상세정보
-- 실루엣·원단이 끝까지 비면: 사진 판독 기록(data/photo_labels.json, 사장님 요청 시 Claude가 수동 판독)
+- 실루엣·원단·핏·소재·컬러·디테일이 끝까지 비면: 사진 판독 기록(data/photo_labels.json, 사장님 요청 시 Claude가 수동 판독)
   → 그래도 빈 티셔츠 원단은 저지 (DEFAULT_TEXTURE)
 
 키워드 사전: tools/attribute_keywords.json (분류가 빠지면 이 파일에 키워드를 추가)
@@ -219,18 +219,19 @@ def classify(product_name: str, category_code: str, category_name: str, detail: 
     item_type = cat2 if cat2 and str(d.get("category2_code", "")).startswith(category_code) else \
         _item_type(name, category_code, category_name)
 
-    fiber = [d["main_fiber"]] if d.get("main_fiber") else keywords(name, "fiber")
     photo = load_photo_labels().get(product_id, {})
+    fiber = [d["main_fiber"]] if d.get("main_fiber") else (keywords(name, "fiber") or photo.get("fiber", []))
     return {
         "item_type": item_type,
         "fit": (d.get("fit") or keywords(name, "fit") or keywords(desc, "fit")
-                or size_fit(d.get("size"), category_code, d.get("sex") or [])),
+                or size_fit(d.get("size"), category_code, d.get("sex") or []) or photo.get("fit", [])),
         "silhouette": silhouette(name, desc, item_type, category_code, d.get("size")) or photo.get("silhouette", []),
         "fiber": fiber,
         "texture": (texture(name, desc, item_type, fiber) or photo.get("texture", [])
                     or ([DEFAULT_TEXTURE[item_type]] if item_type in DEFAULT_TEXTURE else [])),
-        "color": keywords(name, "color") or keywords(" / ".join(d.get("colors") or []), "color"),
-        "detail": keywords(name, "detail"),
+        "color": (keywords(name, "color") or keywords(" / ".join(d.get("colors") or []), "color")
+                  or photo.get("color", [])),
+        "detail": keywords(name, "detail") or photo.get("detail", []),
         "thickness": d.get("thickness") or [],
     }
 
