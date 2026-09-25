@@ -23,7 +23,7 @@ import sys
 import time
 from html import unescape
 
-from common import DETAILS_PATH, HISTORY_DIR, TMP_DIR, BlockedError, get_json, today_kst
+from common import DETAILS_PATH, PERIODS, TMP_DIR, BlockedError, get_json, history_path, today_kst
 
 DETAIL_URL = "https://goods-detail.musinsa.com/api2/goods/{id}"
 SIZE_URL = DETAIL_URL + "/actual-size"
@@ -237,20 +237,20 @@ def ensure_details(product_ids: list[str], details: dict, date: str) -> int:
     return done
 
 
-def update_details(date: str, limit: int | None = None) -> int:
+def update_details(date: str, limit: int | None = None, period: str = "daily") -> int:
     """해당 날짜 랭킹에서 상세정보가 없는 상품만 가져온다. 새로 가져온 개수를 돌려준다."""
     if _another_run_active():
         print("다른 상세정보 수집이 이미 돌고 있어서 이번엔 건너뜀 (잠금: .tmp/product_details.lock)")
         return 0
     _touch_lock()
     try:
-        return _update_details(date, limit)
+        return _update_details(date, limit, period)
     finally:
         LOCK_PATH.unlink(missing_ok=True)
 
 
-def _update_details(date: str, limit: int | None) -> int:
-    with open(HISTORY_DIR / f"{date}.csv", encoding="utf-8-sig") as f:
+def _update_details(date: str, limit: int | None, period: str = "daily") -> int:
+    with open(history_path(date, period), encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
     details = load_details()
     # 높은 순위부터: 도중에 멈춰도 중요한 상품이 먼저 채워지게
@@ -290,9 +290,10 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", default=today_kst())
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--period", choices=list(PERIODS), default="daily")
     args = parser.parse_args()
     try:
-        update_details(args.date, args.limit)
+        update_details(args.date, args.limit, args.period)
     except BlockedError as e:
         print(f"중단: {e}")
         return 1

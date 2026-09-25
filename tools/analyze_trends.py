@@ -1,15 +1,16 @@
 """랭킹 트렌드 분석 Tool.
 
-입력: data/history/*.csv (musinsa_fetch.py), data/product_details.json (product_details.py)
-출력: .tmp/analysis_YYYY-MM-DD.json (build_report.py가 읽음)
+입력: 기간별 랭킹 CSV (일간 data/history/, 주간 data/history_weekly/, 월간 data/history_monthly/),
+      data/product_details.json (product_details.py)
+출력: .tmp/analysis_YYYY-MM-DD.json (일간) / .tmp/analysis_weekly_YYYY-MM-DD.json 등 (build_report.py가 읽음)
 
 분석 기준
 - 성별: 무신사 남성 랭킹 / 여성 랭킹 그대로. (두 랭킹에 모두 오른 상품은 양쪽에 다 반영)
 - 비중(share): 순위가 높을수록 큰 가중치(1위=1.0, 300위≈0)로 속성별 비중을 계산.
-- 추세: 오늘 비중 − 어제 비중(%p), 오늘 비중 − 최근 7일 평균(%p). 기록이 쌓이면 표시.
-  첫날은 추세 없이 '많이 팔리는 속성'만 보여준다.
+- 추세: 일간은 어제 대비·최근 7일 평균 대비, 주간은 7일 전(지난주) 대비, 월간은 한 달 전(지난달) 대비(%p).
+  비교할 기록이 없으면 추세 없이 '많이 팔리는 속성'만 보여준다.
 
-사용법: python tools/analyze_trends.py [--date YYYY-MM-DD]
+사용법: python tools/analyze_trends.py [--date YYYY-MM-DD] [--period daily|weekly|monthly]
 """
 import argparse
 import csv
@@ -20,7 +21,7 @@ from datetime import datetime, timedelta
 
 import review_summary
 from classify_attributes import GROUP_LABELS, GROUPS, classify
-from common import DETAILS_PATH, HISTORY_DIR, TMP_DIR, today_kst
+from common import DETAILS_PATH, PERIODS, TMP_DIR, history_path, today_kst
 
 MAX_RANK = 300  # musinsa_fetch.py와 같게
 GENDERS = {"M": "남성", "F": "여성"}
@@ -31,8 +32,8 @@ MIN_WEEK_DAYS = 3      # 7일 평균 비교는 지난 기록이 3일 이상일 �
 RECOMMEND_PER_GENDER = 5
 
 
-def load_day(date: str) -> list[dict] | None:
-    path = HISTORY_DIR / f"{date}.csv"
+def load_day(date: str, period: str = "daily") -> list[dict] | None:
+    path = history_path(date, period)
     if not path.exists():
         return None
     with open(path, encoding="utf-8-sig") as f:
@@ -85,6 +86,22 @@ def shares(products: list[dict], group: str) -> dict[str, tuple[float, int]]:
 def previous_dates(date: str, days: int) -> list[str]:
     d = datetime.strptime(date, "%Y-%m-%d")
     return [(d - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(1, days + 1)]
+
+
+def compare_date(date: str, period: str) -> str:
+    """비교할 이전 기록 날짜: 일간 어제, 주간 7일 전, 월간 한 달 전 같은 날 (없는 날이면 그 달 말일)."""
+    d = datetime.strptime(date, "%Y-%m-%d")
+    if period == "daily":
+        return (d - timedelta(days=1)).strftime("%Y-%m-%d")
+    if period == "weekly":
+        return (d - timedelta(days=7)).strftime("%Y-%m-%d")
+    first = d.replace(day=1)
+    prev_last = first - timedelta(days=1)
+    return prev_last.replace(day=min(d.day, prev_last.day)).strftime("%Y-%m-%d")
+
+
+def analysis_path(date: str, period: str = "daily"):
+    return TMP_DIR / (f"analysis_{date}.json" if period == "daily" else f"analysis_{period}_{date}.json")
 
 
 def data_scope(rows: list[dict]) -> str:
@@ -277,7 +294,8 @@ def price_bands(products: list[dict]) -> dict:
 
 
 def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: list[list[dict]],
-                   reviews: dict | None = None) -> dict:
+                   reviews: dict | None = None, prev_word: str = "어제") -> dict:
+    """yesterday = 비교할 이전 기록(일간 어제, 주간 지난주, 월간 지난달), prev_word = 그 이름."""
     has_week = len(history) >= MIN_WEEK_DAYS
     attributes = {}
     trend: dict[tuple[str, str], float] = {}     # 속성별 추세 (7일 대비 우선, 없으면 어제 대비)
@@ -305,7 +323,7 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         attributes[group] = {"rows": table, "coverage": round(100 * known / max(1, len(today)), 1)}
 
     has_trend = bool(trend)
-    trend_label = "7일 평균 대비" if has_week else "어제 대비"
+    trend_label = "7일 평균 대비" if has_week else f"{prev_word} 대비"
 
     # 순위 급등 / 신규 진입 (어제 대비, 같은 카테고리 안에서)
     movers, new_entries = [], []
@@ -351,7 +369,7 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         why = f"1일 전체 랭킹 {p['rank']}위 ({p['category_name']})"
         prev = prev_rank.get((p["category_code"], p["product_id"]))
         if prev and prev > p["rank"]:
-            why += f" (어제 {prev}위)"
+            why += f" ({prev_word} {prev}위)"
         if reasons:
             why += (f" · 뜨는 속성({trend_label}): " if has_trend else " · 인기 속성 비중: ") + ", ".join(reasons)
         recommendations.append(product_brief(p) | {"reason": why, "score": round(s, 3)})
@@ -388,34 +406,38 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
     }
 
 
-def analyze(date: str) -> dict:
-    rows = load_day(date)
+def analyze(date: str, period: str = "daily") -> dict:
+    rows = load_day(date, period)
     if rows is None:
-        raise FileNotFoundError(f"{HISTORY_DIR / (date + '.csv')} 없음 — 먼저 musinsa_fetch.py 실행")
+        raise FileNotFoundError(f"{history_path(date, period)} 없음 — 먼저 musinsa_fetch.py 실행")
     details = load_details()
     today = build_products(rows, details)
     scope = data_scope(rows)
-    yesterday_date = previous_dates(date, 1)[0]
+    yesterday_date = compare_date(date, period)
     yesterday, history = None, []
-    for d in previous_dates(date, TREND_WINDOW_DAYS):
-        prev = load_day(d)
+    # 일간만 최근 7일 평균과도 비교. 주간·월간은 지난주·지난달 한 번과만 비교
+    for d in previous_dates(date, TREND_WINDOW_DAYS) if period == "daily" else [yesterday_date]:
+        prev = load_day(d, period)
         if prev is None or data_scope(prev) != scope:
             continue  # 수집 방식이 다른 날(예: 9/24 카테고리별 랭킹)은 비교하지 않음
         products = build_products(prev, details)
-        history.append(products)
+        if period == "daily":
+            history.append(products)
         if d == yesterday_date:
-            yesterday = products  # '어제 대비'는 정확히 어제 데이터가 있을 때만
+            yesterday = products  # 비교는 정확히 그 날 기록이 있을 때만
 
     ids = {r["product_id"] for r in rows}
     reviews = review_summary.load_summaries()
     return {
         "date": date,
+        "period": period,
+        "compare_date": yesterday_date,
         "scope": scope,
         "history_days": len(history),
         "has_yesterday": yesterday is not None,
         "detail_coverage": round(100 * sum(1 for i in ids if i in details) / max(1, len(ids)), 1),
         "genders": {g: analyze_gender(today[g], yesterday[g] if yesterday else None, [h[g] for h in history],
-                                      reviews)
+                                      reviews, PERIODS[period][3])
                     for g in GENDERS.values()},
     }
 
@@ -423,10 +445,11 @@ def analyze(date: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", default=today_kst())
+    parser.add_argument("--period", choices=list(PERIODS), default="daily")
     args = parser.parse_args()
-    result = analyze(args.date)
+    result = analyze(args.date, args.period)
     TMP_DIR.mkdir(exist_ok=True)
-    out = TMP_DIR / f"analysis_{args.date}.json"
+    out = analysis_path(args.date, args.period)
     out.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"분석 완료: {out} (상세정보 반영 {result['detail_coverage']}%)")
     for g, data in result["genders"].items():

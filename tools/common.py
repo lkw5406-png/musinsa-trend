@@ -8,12 +8,29 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-HISTORY_DIR = ROOT / "data" / "history"
+HISTORY_DIR = ROOT / "data" / "history"  # 일간 랭킹 (주간·월간은 history_path로)
+UPDATES_PATH = ROOT / "data" / "ranking_updates.json"
 DETAILS_PATH = ROOT / "data" / "product_details.json"
 TMP_DIR = ROOT / ".tmp"
 DOCS_DIR = ROOT / "docs"
 
 KST = timezone(timedelta(hours=9))
+
+# 랭킹 기간 (2026-09-25: 일간·주간·월간 모두 매일 수집, 리포트는 일간 매일 · 주간 월요일 · 월간 1일)
+# 이름 → (무신사 period 값, 한글 이름, 무신사 표시, 이전 비교 말, 다음 말)
+PERIODS = {
+    "daily": ("DAILY", "일간", "최근 1일", "어제", "내일"),
+    "weekly": ("WEEKLY", "주간", "최근 1주일", "지난주", "다음 주"),
+    "monthly": ("MONTHLY", "월간", "최근 1개월", "지난달", "다음 달"),
+}
+
+
+def history_dir(period: str = "daily") -> Path:
+    return HISTORY_DIR if period == "daily" else ROOT / "data" / f"history_{period}"
+
+
+def history_path(date: str, period: str = "daily") -> Path:
+    return history_dir(period) / f"{date}.csv"
 
 # 봇 위장 없음: 누가 왜 요청하는지 그대로 밝힌다
 USER_AGENT = "MusinsaTrendReport/0.2 (personal research; daily, low-volume)"

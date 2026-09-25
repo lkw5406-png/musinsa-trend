@@ -1,12 +1,13 @@
 """분석 결과(JSON) → 리포트 웹페이지(HTML) Tool.
 
 출력 (GitHub Pages가 docs/ 폴더를 그대로 공개 — 주소 하나로 계속 운영):
-  docs/index.html               최신 리포트 (매일 덮어씀, 사장님이 보는 고정 주소)
-  docs/reports/YYYY-MM-DD.html  날짜별 리포트 (페이지 위 날짜 선택으로 이동)
+  docs/index.html               최신 일간 리포트 (사장님이 보는 고정 주소)
+  docs/reports/YYYY-MM-DD.html  날짜별 일간 리포트 (페이지 위 날짜 선택으로 이동)
   docs/dates.json               리포트가 있는 날짜 목록
+  docs/weekly/…, docs/monthly/…  주간·월간 (같은 구조). 페이지 위 [일간|주간|월간] 전환으로 이동
 
 사용법:
-  python tools/build_report.py [--date YYYY-MM-DD]
+  python tools/build_report.py [--date YYYY-MM-DD] [--period daily|weekly|monthly]
   python tools/build_report.py --date YYYY-MM-DD --standalone 파일.html   사진을 품은 한 장짜리 페이지
 """
 import argparse
@@ -18,13 +19,17 @@ import time
 import urllib.request
 from html import escape
 
-from common import DOCS_DIR, TMP_DIR, USER_AGENT, today_kst
+from analyze_trends import analysis_path
+from common import DOCS_DIR, PERIODS, USER_AGENT, today_kst
 
 CHART_ROWS = 8
 SCOPE_TEXT = {
-    "overall": "무신사 남성·여성 전체 랭킹(최근 1일)에서 의류만 상위 300개 · 상의/아우터/바지/원피스·스커트",
-    "category": "무신사 전체 랭킹(최근 1일) · 상의/아우터/바지/원피스·스커트 · 카테고리별 1~200위 (9/24 방식)",
+    "overall": "무신사 남성·여성 전체 랭킹({span})에서 의류만 상위 300개 · 상의/아우터/바지/원피스·스커트",
+    "category": "무신사 전체 랭킹({span}) · 상의/아우터/바지/원피스·스커트 · 카테고리별 1~200위 (9/24 방식)",
 }
+PERIOD_DIRS = {"daily": "", "weekly": "weekly/", "monthly": "monthly/"}  # docs/ 아래 기간별 폴더
+# 지금 만드는 리포트의 비교 말 (render()가 기간에 맞게 바꿈): 일간 어제/내일, 주간 지난주/다음 주, 월간 지난달/다음 달
+WORD = {"prev": "어제", "next": "내일"}
 
 CSS = """
 :root {
@@ -58,6 +63,11 @@ body { margin: 0; background: var(--page); color: var(--ink);
 header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
 header h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; }
 header p { margin: 0; color: var(--ink-2); }
+.pswitch { display: inline-flex; gap: 2px; padding: 3px; margin-bottom: 10px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--surface); }
+.pswitch a { padding: 5px 14px; border-radius: 7px; font-size: 14px; font-weight: 700; text-decoration: none; color: var(--ink-2); }
+.pswitch a[aria-current] { background: var(--accent); color: #fff; }
+.pswitch a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .datepick { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 .datepick select { font: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: var(--surface);
   border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; min-width: 170px; }
@@ -289,6 +299,11 @@ document.querySelectorAll('.seg').forEach(seg => {
   }));
 });
 
+// 기간 전환: 보던 성별·탭 그대로
+document.querySelectorAll('.pswitch a').forEach(a => a.addEventListener('click', ev => {
+  ev.preventDefault(); location.href = a.getAttribute('href') + viewHash();
+}));
+
 // 카테고리별 인기 TOP: 더보기 / 접기
 document.querySelectorAll('.more').forEach(b => b.addEventListener('click', () => {
   const extra = b.parentElement.querySelectorAll('.extra'), open = extra.length && extra[0].hidden;
@@ -373,13 +388,13 @@ def share_chart(title: str, group: dict, trend_label: str, has_trend: bool) -> s
         return f'<div class="chart"><h3>{e(title)}</h3><p class="cov">{cov}</p><p class="empty">데이터가 부족해요.</p></div>'
     scale = max(10.0, max(r["share"] for r in rows))
     head = (f"<div class='chg-head'><span></span><span></span><span>비중</span>"
-            f"<span>{'7일比' if trend_label.startswith('7일') else '어제比'}</span></div>")
+            f"<span>{'7일比' if trend_label.startswith('7일') else WORD['prev'] + '比'}</span></div>")
     out = []
     for r in rows:
         change = r["week_pp"] if r["week_pp"] is not None else r["dod_pp"]
         tip = f'<b>{e(r["name"])}</b><br>비중 {r["share"]:.1f}% ({r["count"]}개 상품)'
         if r["dod_pp"] is not None:
-            tip += f'<br>어제 대비 {pp(r["dod_pp"])}'
+            tip += f'<br>{WORD["prev"]} 대비 {pp(r["dod_pp"])}'
         if r["week_pp"] is not None:
             tip += f'<br>7일 평균 대비 {pp(r["week_pp"])}'
         out.append(
@@ -476,20 +491,15 @@ def top10_section(idx: int, cats: list[dict]) -> str:
 
 
 def review_html(r: dict | None) -> str:
-    """TOP 카드 아래 후기 요약: 설문 · 좋은 점 · 아쉬운 점 · 대표 후기."""
+    """TOP 카드 아래 후기 요약: 좋은 점 · 아쉬운 점 · 대표 후기.
+    (설문, 후기 수·3점 이하 비율은 2026-09-25 사장님 결정으로 화면에서 뺌)"""
     if not r:
         return ""
     if not r.get("sampled"):
         return "<div class='rv'><span class='rv-none'>아직 후기가 없어요</span></div>"
-    head = f"후기 {r['total']:,}개"
-    if r.get("bad_pct") is not None:  # 3점 이하 후기 비율 (끝까지 못 셌으면 '이상')
-        head += f" · 3점 이하 {r['bad_pct']:.0f}%" + ("" if r.get("bad_exact") else " 이상")
-    survey = " · ".join(f"{e(s['attribute'])} {e(s['answer'])} {s['pct']}%" for s in (r.get("survey") or [])[:3])
     pros = " · ".join(e(x["name"]) for x in r.get("pros") or [])
     cons = " · ".join(e(x["name"]) for x in r.get("cons") or [])
-    rows = [f"<div class='rv-h'>{head}</div>"]
-    if survey:
-        rows.append(f"<div class='rv-s'>{survey}</div>")
+    rows = []
     rows.append(f"<div class='rv-p'><b>좋아요</b> {pros or '<span class=rv-none>특별히 많이 나온 말 없음</span>'}</div>")
     rows.append(f"<div class='rv-c'><b>아쉬워요</b> {cons or '<span class=rv-none>눈에 띄는 불만 없음</span>'}</div>")
     quotes = ""
@@ -567,7 +577,7 @@ def brief_lines(g: dict) -> str:
             lines.append(f"{e(top['name'])} 특징: " + " · ".join(spec))
     rising = sorted((t for t in types if (t.get("dod_pp") or 0) >= 0.5), key=lambda t: -t["dod_pp"])[:3]
     if rising:
-        lines.append("어제보다 오른 아이템: " + ", ".join(
+        lines.append(f"{WORD['prev']}보다 오른 아이템: " + ", ".join(
             f"<b>{e(t['name'])}</b> <span class='up-t'>▲{t['dod_pp']:.1f}%p</span>" for t in rising))
     colors = _rows(g, "color", 3)
     if colors:
@@ -587,7 +597,7 @@ def brief_lines(g: dict) -> str:
 
 
 def item_rank_table(types: list[dict], has_yesterday: bool) -> str:
-    """무엇을 만들까: 아이템 종류를 인기 비중 순으로. 어제보다 0.5%p 이상 오른 아이템은 강조."""
+    """카테고리 순위: 아이템 종류를 인기 비중 순으로. 이전 기록보다 0.5%p 이상 오른 아이템은 강조."""
     if not types:
         return '<p class="empty">데이터가 없어요.</p>'
     types = sorted(types, key=lambda t: -t["share"])
@@ -606,14 +616,14 @@ def item_rank_table(types: list[dict], has_yesterday: bool) -> str:
             f"<td class='num'>{change_html(t.get('dod_pp')) if has_yesterday else '–'}</td>"
             f"<td class='num'>{t['count']}개</td><td class='num'>{won(t.get('median_price'))}</td>"
             f"<td class='num'>{t['best_rank']}위</td></tr>")
-    head = ("<th class='num'>#</th><th></th><th>아이템</th><th>인기 비중</th><th class='num'>어제 대비(%p)</th>"
+    head = ("<th class='num'>#</th><th></th><th>아이템</th><th>인기 비중</th><th class='num'>{WORD['prev']} 대비(%p)</th>"
             "<th class='num'>상품 수</th><th class='num'>중간 가격</th><th class='num'>최고 전체 순위</th>")
     return (f"<div class='table-wrap'><table class='rt'><thead><tr>{head}</tr></thead>"
             f"<tbody>{''.join(body)}</tbody></table></div>")
 
 
 def item_card(p: dict, max_share: float) -> str:
-    dod = f" · 어제 대비 {change_html(p['dod_pp'])}%p" if p.get("dod_pp") is not None else ""
+    dod = f" · {WORD['prev']} 대비 {change_html(p['dod_pp'])}%p" if p.get("dod_pp") is not None else ""
     median = f" · 중간 가격 {won(p['median_price'])}" if p.get("median_price") else ""
     gallery = "".join(
         f"<a href='{e(t['product_url'])}' target='_blank' rel='noopener' title='{e(t['brand'])} {e(t['product_name'])}'>"
@@ -702,7 +712,7 @@ def big_category_charts(gi: int, g: dict) -> str:
         pid = f"bc-{gi}-{i}"
         btns.append(f"<button type='button' data-show='{pid}' aria-selected='{str(i == 0).lower()}'>"
                     f"{e(c['name'])} <small>({c['count']})</small></button>")
-        charts = "".join(share_chart(title, c["attributes"][key], "어제", g["has_trend"]) for key, title in DESIGN_CHARTS)
+        charts = "".join(share_chart(title, c["attributes"][key], f"{WORD['prev']} 대비", g["has_trend"]) for key, title in DESIGN_CHARTS)
         panels.append(f"<div class='seg-panel' id='{pid}' {'hidden' if i else ''}><div class='charts'>{charts}</div></div>")
     return f"<div><div class='seg' role='tablist'>{''.join(btns)}</div>{''.join(panels)}</div>"
 
@@ -726,9 +736,9 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
                      "막대에 마우스를 올리면 자세한 수치.")
         head_sub = f"{e(g['trend_label'])} 가장 많이 늘어난 속성"
     else:
-        chart_sub = "막대 = 인기 비중(순위가 높을수록 크게 반영). 어제 대비 변화는 기록이 쌓이면 표시돼요."
+        chart_sub = f"막대 = 인기 비중(순위가 높을수록 크게 반영). {WORD['prev']} 대비 변화는 기록이 쌓이면 표시돼요."
         head_sub = "오늘 랭킹에서 비중이 가장 큰 속성"
-    no_yday = "어제 기록이 없어 내일부터 표시돼요."
+    no_yday = f"{WORD['prev']} 기록이 없어 {WORD['next']}부터 표시돼요."
     trend_word = "뜨는" if g["has_trend"] else "인기"
     types = g.get("item_types", [])
     body = {
@@ -748,13 +758,13 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
   <section class="card">
     <h2>카테고리별 인기 TOP {TOP_VISIBLE}</h2>
     <p class="sub">카테고리를 눌러 바꿔 보세요. 맨 아래 '더보기'로 50위까지. 번호 = 카테고리 안 순위, '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위.
-    카드 아래 후기 요약(50위까지) = 도움순 후기 50개·별점 낮은 후기 최대 50개에서 자주 나온 표현(좋아요 = 4~5점 후기, 아쉬워요 = 3점 이하 후기)과 구매자 설문 결과.</p>
+    카드 아래 후기 요약(50위까지) = 도움순 후기 50개·별점 낮은 후기 최대 50개에서 자주 나온 표현(좋아요 = 4~5점 후기, 아쉬워요 = 3점 이하 후기)과 대표 후기.</p>
     {top10_section(gi, g.get('top_by_category', []))}
   </section>""",
         "기획": f"""
   <section class="card">
     <h2>아이템 순위</h2>
-    <p class="sub">어떤 아이템이 잘 팔리는지 인기 비중 순으로. 초록 줄 = 어제보다 0.5%p 이상 오른 아이템. 3개 이상 오른 아이템만.</p>
+    <p class="sub">어떤 아이템이 잘 팔리는지 인기 비중 순으로. 초록 줄 = {WORD['prev']}보다 0.5%p 이상 오른 아이템. 3개 이상 오른 아이템만.</p>
     {item_rank_table(types, has_yesterday)}
   </section>
   <section class="card">
@@ -776,7 +786,7 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
         "소재컬러": f"""
   <section class="card">
     <h2>컬러 팔레트</h2>
-    <p class="sub">대분류별로 잘 팔리는 컬러를 인기 비중 순으로. 여러 색으로 파는 상품은 판매 중인 색을 모두 셌어요.{' 작은 숫자 = 어제 대비 변화.' if g['has_trend'] else ''}</p>
+    <p class="sub">대분류별로 잘 팔리는 컬러를 인기 비중 순으로. 여러 색으로 파는 상품은 판매 중인 색을 모두 셌어요.{' 작은 숫자 = ' + WORD['prev'] + ' 대비 변화.' if g['has_trend'] else ''}</p>
     {big_category_palettes(g)}
   </section>
   <section class="card">
@@ -797,7 +807,7 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
   </section>""",
         "동향": f"""
   <section class="card two">
-    {product_table('어제보다 순위가 크게 오른 상품', g['movers'], extra_col='변화', empty=no_yday if not has_yesterday else '')}
+    {product_table(f"{WORD['prev']}보다 순위가 크게 오른 상품", g['movers'], extra_col='변화', empty=no_yday if not has_yesterday else '')}
     {product_table('오늘 새로 TOP 50에 진입', g['new_entries'], empty=no_yday if not has_yesterday else '')}
   </section>""",
     }
@@ -806,8 +816,14 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
         for n, (key, _) in enumerate(PURPOSES))
 
 
-def render(a: dict, dates: list[str] | None, base: str) -> str:
+def render(a: dict, dates: list[str] | None, base: str, root: str = "") -> str:
+    """base = 이 페이지에서 같은 기간 폴더까지 경로, root = docs/ 까지 경로 (기간 전환 링크용)."""
+    period = a.get("period", "daily")
+    _, period_name, span, WORD["prev"], WORD["next"] = PERIODS[period]
     genders = list(a["genders"].items())
+    pswitch = "".join(
+        f'<a href="{root}{PERIOD_DIRS[k]}index.html" data-period="{k}"'
+        f'{" aria-current=page" if k == period else ""}>{v[1]}</a>' for k, v in PERIODS.items())
     gswitch = "".join(
         f'<button type="button" data-g="{i}" data-name="{e(name)}" aria-pressed="{str(i == 0).lower()}">{e(name)}</button>'
         for i, (name, _) in enumerate(genders))
@@ -815,8 +831,13 @@ def render(a: dict, dates: list[str] | None, base: str) -> str:
         f'<button type="button" role="tab" data-t="{key}" aria-selected="{str(n == 0).lower()}">'
         f'<small>{n + 1}</small>{e(label)}</button>' for n, (key, label) in enumerate(PURPOSES))
     panels = "".join(gender_panels(i, name, g, a["has_yesterday"]) for i, (name, g) in enumerate(genders))
-    history_note = (f"최근 {a['history_days']}일 기록과 비교했어요." if a["history_days"]
-                    else "첫 기록이라 어제·7일 비교는 기록이 쌓이면 표시돼요.")
+    if period == "daily":
+        history_note = (f"최근 {a['history_days']}일 기록과 비교했어요." if a["history_days"]
+                        else "첫 기록이라 어제·7일 비교는 기록이 쌓이면 표시돼요.")
+    else:
+        history_note = (f"{WORD['prev']}({a['compare_date']}) 기록과 비교했어요." if a["has_yesterday"]
+                        else f"{WORD['prev']} 기록이 아직 없어 비교는 {WORD['next']}부터 표시돼요.")
+    title = f"{period_name} · {a['date']}" + ("" if period == "daily" else f" 기준 {span}")
     date_picker = ""
     if dates:
         options = "".join(f'<option value="{e(d)}"{" selected" if d == a["date"] else ""}>{e(d)}{" (최신)" if i == 0 else ""}</option>'
@@ -824,14 +845,15 @@ def render(a: dict, dates: list[str] | None, base: str) -> str:
         date_picker = (f'<label class="datepick" for="date">날짜 선택'
                        f'<select id="date" data-base="{e(base)}" data-current="{e(a["date"])}">{options}</select></label>')
     return f"""<meta charset="utf-8">
-<title>무신사 의류 트렌드</title>
+<title>무신사 의류 트렌드 · {period_name}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>{CSS}</style>
 <div class="wrap">
   <header>
     <div>
-      <h1>무신사 의류 랭킹 트렌드 · {e(a['date'])}</h1>
-      <p>{e(SCOPE_TEXT.get(a.get('scope', 'category')))}</p>
+      <nav class="pswitch" aria-label="기간">{pswitch}</nav>
+      <h1>무신사 의류 랭킹 트렌드 · {e(title)}</h1>
+      <p>{e(SCOPE_TEXT.get(a.get('scope', 'category'), '').format(span=span))}</p>
       <p class="note">{e(history_note)} 상품 상세정보(핏·소재·두께) 반영 {a['detail_coverage']:.0f}%</p>
     </div>
     {date_picker}
@@ -842,7 +864,9 @@ def render(a: dict, dates: list[str] | None, base: str) -> str:
   </div>
   {panels}
   <footer>
-    <p>매일 오전 10시 기준 무신사 전체 랭킹(최근 1일)을 모아 날짜별로 쌓아요. 남성·여성은 무신사 성별 랭킹 그대로예요.
+    <p>무신사 랭킹은 매일 새벽 4시 45분쯤 갱신돼요. 매일 오전 6시에 일간·주간·월간 랭킹을 모두 받아 쌓고,
+    리포트는 일간은 매일, 주간은 월요일, 월간은 1일에 만들어요. 주간·월간은 무신사의 '최근 1주일'·'최근 1개월' 랭킹 그대로예요
+    (정확한 집계 구간은 무신사가 공개하지 않음). 남성·여성은 무신사 성별 랭킹 그대로예요.
     '인기 비중'은 순위가 높을수록 크게 반영한 비중(의류 중 1위=1, 300위≈0)이고, 속성을 파악한 상품끼리 비교해요.
     '전체 순위'는 신발·가방 등을 포함한 무신사 전체 랭킹 순위예요.
     핏·두께는 판매자가 입력한 값, 소재는 상품정보제공고시의 겉감 주원료, 실루엣·원단은 상품명·상세 설명·실측 사이즈표로 분류해요.
@@ -858,23 +882,29 @@ def page(body: str) -> str:
     return f"<!doctype html>\n<html lang=\"ko\">\n<head>\n{body}"  # 브라우저가 head/body를 알아서 닫음
 
 
-def report_dates() -> list[str]:
-    return sorted((p.stem for p in (DOCS_DIR / "reports").glob("*.html")), reverse=True)
+def period_dir(period: str = "daily"):
+    return DOCS_DIR / PERIOD_DIRS[period] if PERIOD_DIRS[period] else DOCS_DIR
 
 
-def build(date: str) -> None:
-    a = json.loads((TMP_DIR / f"analysis_{date}.json").read_text(encoding="utf-8"))
-    (DOCS_DIR / "reports").mkdir(parents=True, exist_ok=True)
-    dates = sorted(set(report_dates()) | {date}, reverse=True)
+def report_dates(period: str = "daily") -> list[str]:
+    return sorted((p.stem for p in (period_dir(period) / "reports").glob("*.html")), reverse=True)
 
-    (DOCS_DIR / "reports" / f"{date}.html").write_text(page(render(a, dates, "../")), encoding="utf-8")
+
+def build(date: str, period: str = "daily") -> None:
+    a = json.loads(analysis_path(date, period).read_text(encoding="utf-8"))
+    out = period_dir(period)
+    (out / "reports").mkdir(parents=True, exist_ok=True)
+    dates = sorted(set(report_dates(period)) | {date}, reverse=True)
+    up = "" if period == "daily" else "../"  # 기간 폴더 → docs/
+
+    (out / "reports" / f"{date}.html").write_text(page(render(a, dates, "../", "../" + up)), encoding="utf-8")
     if date == dates[0]:
-        (DOCS_DIR / "index.html").write_text(page(render(a, dates, "")), encoding="utf-8")
-    (DOCS_DIR / "dates.json").write_text(json.dumps(dates), encoding="utf-8")
+        (out / "index.html").write_text(page(render(a, dates, "", up)), encoding="utf-8")
+    (out / "dates.json").write_text(json.dumps(dates), encoding="utf-8")
     old_archive = DOCS_DIR / "archive.html"
     if old_archive.exists():
         old_archive.unlink()  # 예전 '지난 리포트' 목록 → 날짜 선택으로 대체
-    print(f"리포트 생성: {DOCS_DIR / 'index.html'} (날짜 {len(dates)}개)")
+    print(f"리포트 생성: {out / 'index.html'} ({PERIODS[period][1]}, 날짜 {len(dates)}개)")
 
 
 def embed_images(html: str) -> str:
@@ -903,7 +933,7 @@ def embed_images(html: str) -> str:
 
 def build_standalone(date: str, out_path: str) -> None:
     """사진을 품은 한 장짜리 페이지 (날짜 선택 없음)."""
-    a = json.loads((TMP_DIR / f"analysis_{date}.json").read_text(encoding="utf-8"))
+    a = json.loads(analysis_path(date).read_text(encoding="utf-8"))
     html = embed_images(render(a, None, ""))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
@@ -913,12 +943,13 @@ def build_standalone(date: str, out_path: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", default=today_kst())
+    parser.add_argument("--period", choices=list(PERIODS), default="daily")
     parser.add_argument("--standalone", metavar="OUT", help="사진을 품은 단독 페이지로 저장")
     args = parser.parse_args()
     if args.standalone:
         build_standalone(args.date, args.standalone)
     else:
-        build(args.date)
+        build(args.date, args.period)
     return 0
 
 

@@ -23,7 +23,7 @@ import time
 from collections import Counter, defaultdict
 from datetime import date as Date
 
-from common import HISTORY_DIR, ROOT, TMP_DIR, BlockedError, get_json, today_kst
+from common import PERIODS, ROOT, TMP_DIR, BlockedError, get_json, history_path, today_kst
 
 REVIEW_URL = ("https://goods.musinsa.com/api2/review/v1/view/list?goodsNo={id}&selectedSimilarNo={id}"
               "&sort={sort}&page={page}&pageSize=20&myFilter=false&hasPhoto=false&isExperience=false")
@@ -44,7 +44,7 @@ REVIEW_PHRASES = {
         "핏이 예뻐요": r"핏.{0,4}(예쁘|예뻐|이쁘|이뻐|좋|굿|깔끔|잘\s?빠|미쳤)",
         "디자인·색감이 예뻐요": r"(디자인|색감|색깔|컬러|색상).{0,4}(예쁘|예뻐|이쁘|이뻐|좋|고급|맘에|마음에)",
         "부드러워요": r"부드러|보들",
-        "따뜻해요": r"따뜻|따듯|보온",
+        "따뜻해요": r"따뜻(?!한\s?(색|톤|베이지|컬러|브라운|느낌|계열|무드))|따듯(?!한\s?(색|톤|컬러))|보온",
         "편해요": r"편하|편안|편해|편함",
         "가벼워요": r"가벼|가볍",
         "가성비 좋아요": r"가성비|가격\s?대비|저렴|착한\s?가격|싸게",
@@ -57,10 +57,10 @@ REVIEW_PHRASES = {
     "cons": {
         "보풀": r"보풀",
         "털 빠짐": r"털.{0,3}(빠|날림|날려|묻)|털빠",
-        "작게 나와요": r"작아|작게|작네|작음|작다|작습|타이트|꽉\s?껴|끼어요|껴요|낀다",
+        "작게 나와요": r"작아(?!\s?보)|작게(?!\s?보)|작네|작음|작다|작습|타이트|꽉\s?껴|끼어요|껴요|낀다",
         "크게 나와요": r"커요|크게\s?나|크네|큽니다|너무\s?커|많이\s?커|너무\s?크",
         "기장이 아쉬워요": r"기장.{0,5}(길|짧|애매)",
-        "얇거나 비쳐요": r"얇|비침|비쳐|비치",
+        "얇거나 비쳐요": r"얇(?!아\s?보|게\s?보|어\s?보)|비침|비쳐|비치",
         "두껍거나 더워요": r"두꺼워|두껍|더워|덥",
         "까슬·따가워요": r"까슬|까끌|따가|따갑|간지러|가려",
         "냄새": r"냄새",
@@ -197,9 +197,9 @@ def summarize(raw: dict) -> dict:
     }
 
 
-def top_products(date: str, n: int = TOP_N) -> list[str]:
+def top_products(date: str, n: int = TOP_N, period: str = "daily") -> list[str]:
     """성별 × 카테고리별 인기 순위 상위 n개 상품번호 (리포트의 카테고리별 인기 TOP과 같은 순서)."""
-    with open(HISTORY_DIR / f"{date}.csv", encoding="utf-8-sig") as f:
+    with open(history_path(date, period), encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
     groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for r in rows:
@@ -230,14 +230,18 @@ def _stale(entry: dict | None, date: str) -> bool:
     return (Date.fromisoformat(date) - Date.fromisoformat(entry["fetched"])).days >= REFRESH_DAYS
 
 
-def update_summaries(date: str, limit: int | None = MAX_PER_RUN) -> int:
+def update_summaries(date: str, limit: int | None = MAX_PER_RUN, periods: tuple[str, ...] = ("daily",)) -> int:
+    """periods의 랭킹 TOP 50을 합쳐서 정리 (같은 상품은 한 번만). 후기 요약은 상품 단위라 기간끼리 같이 씀."""
     if LOCK_PATH.exists() and time.time() - LOCK_PATH.stat().st_mtime < 600:
         print("다른 후기 수집이 이미 돌고 있어서 이번엔 건너뜀 (잠금: .tmp/review_summary.lock)")
         return 0
     LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     LOCK_PATH.write_text(str(time.time()), encoding="utf-8")
     summaries = load_summaries()
-    targets = top_products(date)
+    targets: list[str] = []
+    for period in periods:
+        if history_path(date, period).exists():
+            targets += [pid for pid in top_products(date, period=period) if pid not in targets]
     todo = [pid for pid in targets if pid not in summaries] + \
            [pid for pid in targets if pid in summaries and _stale(summaries[pid], date)]
     if limit:
@@ -276,12 +280,14 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=MAX_PER_RUN)
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--rebuild", action="store_true")
+    parser.add_argument("--period", choices=list(PERIODS), action="append",
+                        help="여러 번 쓸 수 있음. 없으면 daily")
     args = parser.parse_args()
     if args.rebuild:
         rebuild_from_cache()
         return 0
     try:
-        update_summaries(args.date, None if args.all else args.limit)
+        update_summaries(args.date, None if args.all else args.limit, tuple(args.period or ["daily"]))
     except BlockedError as e:
         print(f"중단: {e}")
         return 1

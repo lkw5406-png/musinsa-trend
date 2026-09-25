@@ -1,10 +1,13 @@
-# 매일 한국시간 오전 10시: 무신사 의류 랭킹(최근 1일) 수집 → 상세정보 → 분석 → 고정 주소 리포트에 날짜 추가
+# 매일 한국시간 오전 6시: 무신사 의류 랭킹(일간·주간·월간) 수집 → 상세정보 → 후기 요약 → 분석 → 리포트
+# 무신사 랭킹은 매일 새벽 4시 45분쯤 갱신되고, 지난 랭킹은 다시 받을 수 없음 → 낮 12시·밤 8시에 빠진 것만 다시 받음
 name: musinsa-daily-report
 
 on:
   schedule:
-    - cron: "0 1 * * *"   # UTC 01:00 = KST 10:00 (GitHub 사정으로 10~20분 늦을 수 있음)
-  workflow_dispatch:       # Actions 탭에서 수동 실행 버튼
+    - cron: "0 21 * * *"  # UTC 21:00 = KST 다음 날 06:00 — 본 실행 (GitHub 사정으로 10~20분 늦을 수 있음)
+    - cron: "0 3 * * *"   # UTC 03:00 = KST 12:00 — 재확인 (오늘 수집이 빠진 기간만)
+    - cron: "0 11 * * *"  # UTC 11:00 = KST 20:00 — 재확인
+  workflow_dispatch:       # Actions 탭에서 수동 실행 버튼 (빠진 것만 받음)
 
 permissions:
   contents: write
@@ -16,7 +19,7 @@ concurrency:
 jobs:
   report:
     runs-on: ubuntu-latest
-    timeout-minutes: 180   # 새 상품이 많은 날 상세정보·후기 수집이 길어질 수 있음 (후기는 하루 최대 120개 ≈ 1시간)
+    timeout-minutes: 300   # 월요일·1일(주간·월간 리포트가 겹치는 날)과 새 상품이 많은 날 대비
     # 실패 알림: 이 작업이 실패하면 GitHub이 저장소 주인 계정 이메일로 자동 알림을 보냄 (별도 메일 설정 없음)
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +29,12 @@ jobs:
           python-version: "3.12"
 
       - name: 수집 · 분석 · 리포트 생성
-        run: python tools/run_daily.py
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 21 * * *" ]; then
+            python tools/run_daily.py
+          else
+            python tools/run_daily.py --only-missing
+          fi
 
       - name: 기록과 리포트 저장(push)
         if: always()   # 도중에 멈춰도 받은 상세정보는 저장
