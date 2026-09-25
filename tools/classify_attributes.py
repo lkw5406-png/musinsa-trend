@@ -13,6 +13,7 @@
 - 디테일: 상품명(+영문명) 키워드
 - 두께: 상세정보
 - 실루엣·원단이 끝까지 비면: 사진 판독 기록(data/photo_labels.json, 사장님 요청 시 Claude가 수동 판독)
+  → 그래도 빈 티셔츠 원단은 저지 (DEFAULT_TEXTURE)
 
 키워드 사전: tools/attribute_keywords.json (분류가 빠지면 이 파일에 키워드를 추가)
 
@@ -100,6 +101,9 @@ IMPLIED_TEXTURE = {
     "피케/카라 티셔츠": "피케",
 }
 FIBER_TEXTURE = {"가죽": "레더", "합성피혁": "레더"}
+# 티셔츠는 원단 표기가 거의 없고(대부분 '면 100%'만) 기본 원단이 저지. 상품명·설명·사진 판독으로도 못 찾으면 저지로 봄
+# (2026-09-25 티셔츠 58개 사진 판독: 50개 민무늬 저지, 골지 3 · 슬럽 2 · 플리스·스웨트·레이스 각 1)
+DEFAULT_TEXTURE = {"긴소매 티셔츠": "저지/인터록", "반소매 티셔츠": "저지/인터록", "민소매 티셔츠": "저지/인터록"}
 # 무신사 공식 소분류가 기장을 정해 주는 경우
 CATEGORY_LENGTH = {"미니스커트": "미니/숏 기장", "미니원피스": "미니/숏 기장", "미디스커트": "미디 기장",
                    "미디원피스": "미디 기장", "롱스커트": "롱/맥시 기장", "맥시원피스": "롱/맥시 기장"}
@@ -223,7 +227,8 @@ def classify(product_name: str, category_code: str, category_name: str, detail: 
                 or size_fit(d.get("size"), category_code, d.get("sex") or [])),
         "silhouette": silhouette(name, desc, item_type, category_code, d.get("size")) or photo.get("silhouette", []),
         "fiber": fiber,
-        "texture": texture(name, desc, item_type, fiber) or photo.get("texture", []),
+        "texture": (texture(name, desc, item_type, fiber) or photo.get("texture", [])
+                    or ([DEFAULT_TEXTURE[item_type]] if item_type in DEFAULT_TEXTURE else [])),
         "color": keywords(name, "color") or keywords(" / ".join(d.get("colors") or []), "color"),
         "detail": keywords(name, "detail"),
         "thickness": d.get("thickness") or [],
