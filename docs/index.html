@@ -67,11 +67,6 @@ section.card { background: var(--surface); border: 1px solid var(--border); bord
   padding: 20px; margin-bottom: 18px; }
 section.card h2 { font-size: 18px; margin: 0 0 4px; }
 section.card .sub { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
-.headlines { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px; }
-.headline { border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
-.headline .k { font-size: 12px; color: var(--muted); }
-.headline .v { font-size: 20px; font-weight: 700; margin: 2px 0; }
-.headline .d { font-size: 13px; color: var(--ink-2); }
 .recs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); gap: 14px; }
 .rec { text-decoration: none; color: inherit; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
   display: flex; flex-direction: column; background: var(--surface); }
@@ -110,14 +105,7 @@ td a:hover { text-decoration: underline; }
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 18px; }
 .up-t { color: var(--up-text); } .down-t { color: var(--down-text); } .flat-t { color: var(--muted); }
 .empty { color: var(--muted); font-size: 13px; }
-/* 카테고리 구성 막대 */
-.mix { margin-top: 18px; }
-.mix h3, .sec-h { font-size: 15px; margin: 0 0 8px; }
-.mixbar { display: flex; gap: 2px; height: 26px; border-radius: 6px; overflow: hidden; }
-.mixbar span { display: block; height: 100%; }
-.mixlegend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 13px; color: var(--ink-2); }
-.mixlegend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-.mixlegend b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.sec-h { font-size: 15px; margin: 0 0 8px; }
 /* 카테고리 탭 (TOP 10) */
 .seg { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
 .seg button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer;
@@ -194,6 +182,16 @@ tr.why-row td { padding-top: 10px; padding-bottom: 18px; }
 /* 오늘 요약 */
 .brief { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
 .brief li::marker { color: var(--muted); }
+.brief .hint { font-size: 12px; color: var(--muted); margin-left: 4px; }
+.brief .sub { margin: 6px 0 2px; padding-left: 1.1em; display: flex; flex-direction: column; gap: 5px;
+  font-size: 14px; color: var(--ink-2); list-style: circle; }
+.brief .sub a { color: var(--ink); text-decoration: none; }
+.brief .sub a:hover { text-decoration: underline; }
+.brief .sub .b { color: var(--muted); font-size: 13px; }
+.brief .sub small { color: var(--muted); }
+.brief .conf { font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--muted); white-space: nowrap; }
+.brief .conf.ok { color: var(--up-text); border-color: var(--up-text); }
 /* 아이템 순위표 */
 .rt td { white-space: nowrap; }
 .rt td:nth-child(3) { white-space: normal; min-width: 110px; }
@@ -253,13 +251,7 @@ footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 70ch
   <section class="card">
     <h2>남성 · 오늘 요약</h2>
     <p class="sub">1일 랭킹 의류 300개 기준 · 회의 자료에 그대로 옮겨 쓸 수 있게 정리했어요.</p>
-    <ul class='brief'><li>가장 인기 있는 아이템은 <b>긴소매 티셔츠</b>(인기 비중 11%), 이어서 트레이닝/조거 팬츠, 데님 팬츠.</li><li>긴소매 티셔츠 특징: 원단 <b>저지/인터록</b> 53% · 핏 <b>레귤러</b> 85% · 소재 <b>코튼</b> 84% · 컬러 <b>그레이/차콜</b> 69% · 디테일 <b>헨리넥</b> 44%</li><li>어제보다 오른 아이템: <b>트레이닝/조거 팬츠</b> <span class='up-t'>▲2.6%p</span>, <b>긴소매 티셔츠</b> <span class='up-t'>▲2.0%p</span>, <b>맨투맨/스웨트</b> <span class='up-t'>▲1.2%p</span></li><li>많이 팔린 컬러: <i class='sw' style='background:#111111'></i>블랙 58% · <i class='sw' style='background:#7d7d7d'></i>그레이/차콜 39% · <i class='sw' style='background:#8a5a2e'></i>브라운/카멜 19%</li><li>많이 쓰인 원단: 테리/스웨트 19% · 데님 14% · 니트 13%</li><li>중간 가격 <b>41,810원</b> · 가장 많은 가격대 3~5만원 (34%)</li></ul>
-  </section>
-  <section class="card">
-    <h2>핵심 지표</h2>
-    <p class="sub">어제 대비 가장 많이 늘어난 속성</p>
-    <div class="headlines"><div class="headline"><div class="k">뜨는 아이템</div><div class="v">트레이닝/조거 팬츠</div><div class="d"><b class="up-t">+2.6%p</b> · 비중 10% · 어제 대비</div></div><div class="headline"><div class="k">뜨는 핏</div><div class="v">루즈</div><div class="d"><b class="up-t">+1.3%p</b> · 비중 43% · 어제 대비</div></div><div class="headline"><div class="k">뜨는 실루엣</div><div class="v">와이드</div><div class="d"><b class="up-t">+2.5%p</b> · 비중 56% · 어제 대비</div></div><div class="headline"><div class="k">뜨는 소재(주원료)</div><div class="v">코튼</div><div class="d"><b class="up-t">+3.7%p</b> · 비중 58% · 어제 대비</div></div><div class="headline"><div class="k">뜨는 컬러</div><div class="v">화이트</div><div class="d"><b class="up-t">+1.4%p</b> · 비중 9% · 어제 대비</div></div></div>
-    <div class='mix'><h3>카테고리 구성</h3><div class='mixbar' role='img' aria-label='카테고리 구성'><span style='flex:93;background:var(--c1)' tabindex='0' data-tip='&lt;b&gt;상의&lt;/b&gt;&lt;br&gt;93개 (31%) · 인기 비중 31%'></span><span style='flex:115;background:var(--c2)' tabindex='0' data-tip='&lt;b&gt;아우터&lt;/b&gt;&lt;br&gt;115개 (38%) · 인기 비중 38%'></span><span style='flex:92;background:var(--c3)' tabindex='0' data-tip='&lt;b&gt;바지&lt;/b&gt;&lt;br&gt;92개 (31%) · 인기 비중 31%'></span></div><div class='mixlegend'><span><i style='background:var(--c1)'></i>상의 <b>93개</b> (31%)</span><span><i style='background:var(--c2)'></i>아우터 <b>115개</b> (38%)</span><span><i style='background:var(--c3)'></i>바지 <b>92개</b> (31%)</span></div></div>
+    <ul class='brief'><li>가장 인기 있는 아이템은 <b>긴소매 티셔츠</b>(인기 비중 11%), 이어서 트레이닝/조거 팬츠, 데님 팬츠.</li><li>어제보다 오른 아이템: <b>트레이닝/조거 팬츠</b> <span class='up-t'>▲2.6%p</span>, <b>긴소매 티셔츠</b> <span class='up-t'>▲2.0%p</span>, <b>맨투맨/스웨트</b> <span class='up-t'>▲1.2%p</span><ul class='sub'><li><b>트레이닝/조거 팬츠</b>에서 늘어난 스펙: 소재 <b>나일론</b> <span class='up-t'>+5%p</span> · 원단 <b>테리/스웨트</b> <span class='up-t'>+4%p</span></li><li><b>긴소매 티셔츠</b>에서 늘어난 스펙: 디테일 <b>슬릿/컷아웃</b> <span class='up-t'>+7%p</span> · 핏 <b>루즈</b> <span class='up-t'>+5%p</span> · 컬러 <i class='sw' style='background:#9c2233'></i><b>레드/버건디</b> <span class='up-t'>+5%p</span></li></ul></li><li>순위가 크게 오른 상품 <span class='hint'>자세한 원인·출처는 7 시장 동향</span><ul class='sub'><li><a href='https://www.musinsa.com/products/7032804' target='_blank' rel='noopener'><span class='b'>알리스</span> [패션플래닛 X 알리스] 더블립 레이어드 롱슬리브 티…</a> <span class='up-t'>▲289</span> <small>(412→123위)</small> — 패션플래닛 협업 · 9/25 콜라보 코디 영상 <span class='conf ok'>확인</span></li><li><a href='https://www.musinsa.com/products/5994911' target='_blank' rel='noopener'><span class='b'>르아르</span> 슬림핏 라이트 후드 집업 [네이비]</a> <span class='up-t'>▲206</span> <small>(382→176위)</small> — 브랜드 총정리 영상 &#x27;1군&#x27; 소개 + 40% 할인 <span class='conf'>추정</span></li><li><a href='https://www.musinsa.com/products/5335287' target='_blank' rel='noopener'><span class='b'>토피</span> 미니멀 래글런 롱 슬리브 (NAVY)</a> <span class='up-t'>▲196</span> <small>(363→167위)</small> — 브랜드 총정리 영상 + 가을 롱슬리브 추천 붐 <span class='conf'>추정</span></li></ul></li><li>뜨는 신상 <span class='hint'>등록 45일 안의 상품 중 의류 100위 안에 새로 들었거나 10계단 이상 오름 외 5개</span><ul class='sub'><li><a href='https://www.musinsa.com/products/7161034' target='_blank' rel='noopener'><span class='b'>디미트리블랙</span> VLAD 원턱 커브드 트랙 스웻 팬츠_(3심볼) 3 …</a> 의류 18위 <small>(어제 71위)</small> · 28,900원 · <small>8/25 등록</small></li><li><a href='https://www.musinsa.com/products/7056686' target='_blank' rel='noopener'><span class='b'>디키즈</span> 더블니 85283 루즈핏 워크팬츠 Black</a> 의류 19위 <small>(어제 73위)</small> · 52,500원 · <small>8/12 등록</small></li><li><a href='https://www.musinsa.com/products/7282189' target='_blank' rel='noopener'><span class='b'>디미트리블랙</span> © 모두의 SUPIMA® 코튼 니트_(헨리넥) 3CO…</a> 의류 28위 <small>(어제 93위)</small> · 39,900원 · <small>9/9 등록</small></li></ul></li><li>뜨는 브랜드 <span class='hint'>300위 안 상품 수가 어제보다 늘어난 브랜드</span><ul class='sub'><li><b>시그니처</b> 9개 <span class='up-t'>(+4)</span> · 크게 오른 상품 5개 <small>· 대표: 와이드 커브드 다트 코튼 팬츠[베이지]</small></li><li><b>디스이즈네버댓</b> 4개 <span class='up-t'>(+4)</span> <small>· 대표: T-Logo Hoodie Heather Grey</small></li><li><b>알리스</b> 14개 <span class='up-t'>(+3)</span> · 크게 오른 상품 3개 <small>· 대표: 데님 레이어드 크롭 니트 풀오버 [미드블루]</small></li></ul></li></ul>
   </section></div><div class="panel" data-g="0" data-t="인기" role="tabpanel" hidden>
   <section class="card">
     <h2>카테고리별 인기 TOP 20</h2>
@@ -317,13 +309,7 @@ footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 70ch
   <section class="card">
     <h2>여성 · 오늘 요약</h2>
     <p class="sub">1일 랭킹 의류 300개 기준 · 회의 자료에 그대로 옮겨 쓸 수 있게 정리했어요.</p>
-    <ul class='brief'><li>가장 인기 있는 아이템은 <b>후드 집업</b>(인기 비중 16%), 이어서 긴소매 티셔츠, 후드 티셔츠.</li><li>후드 집업 특징: 원단 <b>테리/스웨트</b> 91% · 핏 <b>루즈</b> 48% · 소재 <b>코튼</b> 89% · 컬러 <b>블랙</b> 39% · 디테일 <b>로고/그래픽</b> 59%</li><li>어제보다 오른 아이템: <b>후드 티셔츠</b> <span class='up-t'>▲2.9%p</span>, <b>후드 집업</b> <span class='up-t'>▲1.9%p</span>, <b>환절기 코트</b> <span class='up-t'>▲1.2%p</span></li><li>많이 팔린 컬러: <i class='sw' style='background:#111111'></i>블랙 42% · <i class='sw' style='background:#7d7d7d'></i>그레이/차콜 31% · <i class='sw' style='background:#1f2a48'></i>네이비 13%</li><li>많이 쓰인 원단: 테리/스웨트 36% · 저지/인터록 17% · 다운/패딩 12%</li><li>중간 가격 <b>52,060원</b> · 가장 많은 가격대 3~5만원 (34%)</li></ul>
-  </section>
-  <section class="card">
-    <h2>핵심 지표</h2>
-    <p class="sub">어제 대비 가장 많이 늘어난 속성</p>
-    <div class="headlines"><div class="headline"><div class="k">뜨는 아이템</div><div class="v">후드 티셔츠</div><div class="d"><b class="up-t">+2.9%p</b> · 비중 11% · 어제 대비</div></div><div class="headline"><div class="k">뜨는 핏</div><div class="v">레귤러</div><div class="d"><b class="up-t">+3.1%p</b> · 비중 48% · 어제 대비</div></div><div class="headline"><div class="k">뜨는 실루엣</div><div class="v">크롭</div><div class="d"><b class="up-t">+2.5%p</b> · 비중 28% · 어제 대비</div></div><div class="headline"><div class="k">뜨는 소재(주원료)</div><div class="v">코튼</div><div class="d"><b class="up-t">+5.2%p</b> · 비중 63% · 어제 대비</div></div><div class="headline"><div class="k">뜨는 컬러</div><div class="v">화이트</div><div class="d"><b class="up-t">+1.8%p</b> · 비중 13% · 어제 대비</div></div></div>
-    <div class='mix'><h3>카테고리 구성</h3><div class='mixbar' role='img' aria-label='카테고리 구성'><span style='flex:105;background:var(--c1)' tabindex='0' data-tip='&lt;b&gt;상의&lt;/b&gt;&lt;br&gt;105개 (35%) · 인기 비중 32%'></span><span style='flex:137;background:var(--c2)' tabindex='0' data-tip='&lt;b&gt;아우터&lt;/b&gt;&lt;br&gt;137개 (46%) · 인기 비중 52%'></span><span style='flex:56;background:var(--c3)' tabindex='0' data-tip='&lt;b&gt;바지&lt;/b&gt;&lt;br&gt;56개 (19%) · 인기 비중 16%'></span><span style='flex:2;background:var(--c4)' tabindex='0' data-tip='&lt;b&gt;원피스/스커트&lt;/b&gt;&lt;br&gt;2개 (1%) · 인기 비중 0%'></span></div><div class='mixlegend'><span><i style='background:var(--c1)'></i>상의 <b>105개</b> (35%)</span><span><i style='background:var(--c2)'></i>아우터 <b>137개</b> (46%)</span><span><i style='background:var(--c3)'></i>바지 <b>56개</b> (19%)</span><span><i style='background:var(--c4)'></i>원피스/스커트 <b>2개</b> (1%)</span></div></div>
+    <ul class='brief'><li>가장 인기 있는 아이템은 <b>후드 집업</b>(인기 비중 16%), 이어서 긴소매 티셔츠, 후드 티셔츠.</li><li>어제보다 오른 아이템: <b>후드 티셔츠</b> <span class='up-t'>▲2.9%p</span>, <b>후드 집업</b> <span class='up-t'>▲1.9%p</span>, <b>환절기 코트</b> <span class='up-t'>▲1.2%p</span><ul class='sub'><li><b>후드 티셔츠</b>에서 늘어난 스펙: 핏 <b>루즈</b> <span class='up-t'>+14%p</span> · 원단 <b>테리/스웨트</b> <span class='up-t'>+8%p</span> · 디테일 <b>로고/그래픽</b> <span class='up-t'>+8%p</span></li><li><b>후드 집업</b>에서 늘어난 스펙: 핏 <b>레귤러</b> <span class='up-t'>+12%p</span> · 컬러 <i class='sw' style='background:#ffffff'></i><b>화이트</b> <span class='up-t'>+9%p</span> · 원단 <b>테리/스웨트</b> <span class='up-t'>+8%p</span></li><li><b>환절기 코트</b>에서 늘어난 스펙: 소재 <b>울</b> <span class='up-t'>+21%p</span> · 디테일 <b>리본/보우</b> <span class='up-t'>+19%p</span> · 핏 <b>루즈</b> <span class='up-t'>+9%p</span></li></ul></li><li>순위가 크게 오른 상품 <span class='hint'>자세한 원인·출처는 7 시장 동향</span><ul class='sub'><li><a href='https://www.musinsa.com/products/5329384' target='_blank' rel='noopener'><span class='b'>플레이스 스튜디오</span> [리뉴얼] 하이넥 스탠다드 스트랩 비조 포인트 블루종…</a> <span class='up-t'>▲395</span> <small>(435→40위)</small> — 브랜드 여성 유튜버 광고 집중(9월) <span class='conf'>추정</span></li><li><a href='https://www.musinsa.com/products/4808319' target='_blank' rel='noopener'><span class='b'>디키즈</span> 트리 로고 후디 Black</a> <span class='up-t'>▲307</span> <small>(410→103위)</small> — 추석 세일 영상에 브랜드 소개 + 후드 시즌 <span class='conf'>추정</span></li><li><a href='https://www.musinsa.com/products/3651031' target='_blank' rel='noopener'><span class='b'>일리고</span> 129 로고 패치 후드 집업 블랙</a> <span class='up-t'>▲258</span> <small>(406→148위)</small> — 추석 세일 추천에 브랜드 소개 + 집업 시즌 <span class='conf'>추정</span></li></ul></li><li>뜨는 신상 <span class='hint'>등록 45일 안의 상품 중 의류 100위 안에 새로 들었거나 10계단 이상 오름 외 4개</span><ul class='sub'><li><a href='https://www.musinsa.com/products/7161034' target='_blank' rel='noopener'><span class='b'>디미트리블랙</span> VLAD 원턱 커브드 트랙 스웻 팬츠_(3심볼) 3 …</a> 의류 44위 <small>(어제 195위)</small> · 28,900원 · <small>8/25 등록</small></li><li><a href='https://www.musinsa.com/products/7120350' target='_blank' rel='noopener'><span class='b'>애즈유아</span> 하이넥 바이커 레더 자켓 블랙</a> 의류 51위 <small>(어제 156위)</small> · 113,600원 · <small>8/20 등록</small></li><li><a href='https://www.musinsa.com/products/7159262' target='_blank' rel='noopener'><span class='b'>세컨드솔트</span> [에어클라우드]사선지퍼 경량 패딩 자켓 (라이트블루)</a> 의류 55위 <small>(어제 87위)</small> · 59,520원 · <small>8/25 등록</small></li></ul></li><li>뜨는 브랜드 <span class='hint'>300위 안 상품 수가 어제보다 늘어난 브랜드</span><ul class='sub'><li><b>언타이틀 서울</b> 15개 <span class='up-t'>(+6)</span> · 크게 오른 상품 8개 <small>· 대표: 유니콘 헨리넥 슬럽 롱 슬리브 그레이</small></li><li><b>일리고</b> 5개 <span class='up-t'>(+4)</span> · 크게 오른 상품 1개 <small>· 대표: 129 로고 패치 후드 집업 블랙</small></li><li><b>디키즈</b> 5개 <span class='up-t'>(+3)</span> · 크게 오른 상품 2개 <small>· 대표: 트리 로고 후디 Gray</small></li></ul></li></ul>
   </section></div><div class="panel" data-g="1" data-t="인기" role="tabpanel" hidden>
   <section class="card">
     <h2>카테고리별 인기 TOP 20</h2>

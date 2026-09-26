@@ -15,6 +15,7 @@
 import argparse
 import csv
 import json
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -30,6 +31,15 @@ MIN_COUNT = 5          # 이보다 적게 등장한 속성은 우연일 수 있�
 TREND_WINDOW_DAYS = 7
 MIN_WEEK_DAYS = 3      # 7일 평균 비교는 지난 기록이 3일 이상일 때부터
 RECOMMEND_PER_GENDER = 5
+# 오늘 요약 (2026-09-27 사장님 요청: 전 카테고리 합계 대신 상품·브랜드·아이템 단위 정보)
+IMG_DATE = re.compile(r"/goods_img/(\d{8})/")  # 대표 사진 등록일 = 상품 등록(또는 사진 교체) 시점
+# 이 기간 안에 사진이 등록된 상품 = 신상. 2주로는 100위 안에 거의 없어(9/26 남녀 0개) 시즌 신상이 잡히게 45일
+FRESH_DAYS = {"daily": 45, "weekly": 45, "monthly": 60}
+FRESH_TOP = 100          # 신상은 의류 순위 100위 안에 새로 들었거나
+FRESH_JUMP = 10          # 이만큼 이상 오른 것만
+BRAND_MIN_GAIN = 2       # 300위 안 상품 수가 이만큼 이상 늘어난 브랜드 = 뜨는 브랜드
+SPEC_MIN_ITEMS = 5       # 아이템 안 스펙 변화는 그 아이템 상품이 양쪽 날 모두 이만큼 이상일 때만 (적으면 우연)
+SPEC_MIN_PP = 3.0        # 이 이상 늘어난 스펙만
 
 
 def load_day(date: str, period: str = "daily") -> list[dict] | None:
@@ -109,6 +119,11 @@ def data_scope(rows: list[dict]) -> str:
     return "overall" if rows and "clothing_rank" in rows[0] else "category"
 
 
+def image_date(url: str) -> str | None:
+    m = IMG_DATE.search(url or "")
+    return f"{m.group(1)[:4]}-{m.group(1)[4:6]}-{m.group(1)[6:]}" if m else None
+
+
 def product_brief(p: dict) -> dict:
     return {k: p[k] for k in ("product_id", "brand", "product_name", "category_name", "item_type", "rank",
                               "clothing_rank", "final_price", "discount_rate", "sales_label", "image_url",
@@ -168,15 +183,56 @@ def top_by_category(products: list[dict], n: int = 10, reviews: dict | None = No
     return out
 
 
-def category_mix(products: list[dict]) -> list[dict]:
-    """카테고리 구성: 상품 수와 순위 가중 비중."""
+def spec_changes(items: list[dict], prev: list[dict]) -> list[dict]:
+    """한 아이템 안에서 이전 기록보다 비중이 늘어난 스펙(핏·원단·컬러 등) — 많이 늘어난 순 3개."""
+    if len(items) < SPEC_MIN_ITEMS or len(prev) < SPEC_MIN_ITEMS:
+        return []
     out = []
-    for code in CATEGORY_ORDER:
-        items = [p for p in products if p["category_code"] == code]
-        if items:
-            out.append({"code": code, "name": items[0]["category_name"], "count": len(items),
-                        "share": round(_weight_share(items, products), 1)})
+    for group in ITEM_PROFILE_GROUPS:
+        if group == "silhouette" and items[0]["category_code"] not in SILHOUETTE_PROFILE_CODES:
+            continue
+        s_prev = shares(prev, group)
+        for v, (pct, cnt) in shares(items, group).items():
+            gain = pct - s_prev.get(v, (0.0, 0))[0]
+            if cnt >= 2 and gain >= SPEC_MIN_PP and not v.startswith("기타"):
+                out.append({"group": group, "name": v, "pct": round(pct, 1), "gain": round(gain, 1)})
+    return sorted(out, key=lambda x: -x["gain"])[:3]
+
+
+def fresh_entries(today: list[dict], yesterday: list[dict] | None, date: str, days: int) -> list[dict]:
+    """사진 등록 N일 안의 신상 중 의류 100위 안에 새로 들었거나 10계단 이상 오른 상품
+    (이전 기록이 없으면 100위 안 신상 전부)."""
+    since = (datetime.strptime(date, "%Y-%m-%d") - timedelta(days=days)).strftime("%Y-%m-%d")
+    prev_rank = {p["product_id"]: p["clothing_rank"] for p in yesterday or []}
+    out, seen = [], set()
+    for p in today:
+        reg = image_date(p["image_url"])
+        prev = prev_rank.get(p["product_id"])
+        risen = not yesterday or prev is None or prev > FRESH_TOP or prev - p["clothing_rank"] >= FRESH_JUMP
+        if p["clothing_rank"] > FRESH_TOP or not reg or reg < since or p["product_id"] in seen or not risen:
+            continue
+        seen.add(p["product_id"])
+        out.append(product_brief(p) | {"registered": reg, "prev_clothing_rank": prev_rank.get(p["product_id"])})
     return out
+
+
+def rising_brands(today: list[dict], yesterday: list[dict] | None, movers: list[dict]) -> list[dict]:
+    """300위 안 상품 수가 이전 기록보다 늘어난 브랜드 (많이 늘어난 순, 같으면 크게 오른 상품 수 순)."""
+    if not yesterday:
+        return []
+    now = defaultdict(set)
+    before = defaultdict(set)
+    for p in today:
+        now[p["brand"]].add(p["product_id"])
+    for p in yesterday:
+        before[p["brand"]].add(p["product_id"])
+    jumped = defaultdict(int)
+    for m in movers:
+        jumped[m["brand"]] += 1
+    rows = [{"brand": b, "count": len(ids), "gain": len(ids) - len(before[b]), "movers": jumped[b],
+             "best": min((p for p in today if p["brand"] == b), key=lambda p: p["rank"])["product_name"]}
+            for b, ids in now.items() if len(ids) - len(before[b]) >= BRAND_MIN_GAIN]
+    return sorted(rows, key=lambda r: (-r["gain"], -r["movers"], -r["count"]))[:3]
 
 
 def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[dict]:
@@ -185,8 +241,8 @@ def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[
     for p in today:
         by_type[p["item_type"]].append(p)
     prev_share = {}
+    prev_by_type: dict[str, list[dict]] = defaultdict(list)
     if yesterday:
-        prev_by_type: dict[str, list[dict]] = defaultdict(list)
         for p in yesterday:
             prev_by_type[p["item_type"]].append(p)
         prev_share = {t: _weight_share(ps, yesterday) for t, ps in prev_by_type.items()}
@@ -223,6 +279,7 @@ def item_type_profiles(today: list[dict], yesterday: list[dict] | None) -> list[
             "price_high": q[1] if q else None,
             "best_rank": min(p["rank"] for p in items),
             "groups": groups,
+            "spec_changes": spec_changes(items, prev_by_type.get(item_type, [])),
             "top_products": [product_brief(p) for p in items[:6]],  # 디자인 참고 탭의 대표 사진
         })
     profiles.sort(key=lambda x: (CATEGORY_ORDER.index(x["category_code"]) if x["category_code"] in CATEGORY_ORDER else 9,
@@ -293,8 +350,8 @@ def price_bands(products: list[dict]) -> dict:
     return {"labels": labels, "rows": rows, "totals": totals, "median": _median(all_prices)}
 
 
-def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: list[list[dict]],
-                   reviews: dict | None = None, prev_word: str = "어제") -> dict:
+def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: list[list[dict]], date: str,
+                   reviews: dict | None = None, prev_word: str = "어제", fresh_days: int = 14) -> dict:
     """yesterday = 비교할 이전 기록(일간 어제, 주간 지난주, 월간 지난달), prev_word = 그 이름."""
     has_week = len(history) >= MIN_WEEK_DAYS
     attributes = {}
@@ -395,13 +452,15 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         "trend_label": trend_label,
         "headlines": headlines,
         "attributes": attributes,
-        "category_mix": category_mix(today),
         "top_by_category": top_by_category(today, n=50, reviews=reviews),  # 화면엔 20개, 더보기로 50개
         "big_categories": by_big_category(today, yesterday),
         "item_types": item_type_profiles(today, yesterday),
         "price_bands": price_bands(today),
         "movers": movers[:10],
         "new_entries": new_entries[:10],
+        "fresh_entries": fresh_entries(today, yesterday, date, fresh_days),
+        "fresh_days": fresh_days,
+        "rising_brands": rising_brands(today, yesterday, movers),
         "recommendations": recommendations,
     }
 
@@ -428,8 +487,8 @@ def analyze(date: str, period: str = "daily") -> dict:
 
     ids = {r["product_id"] for r in rows}
     reviews = review_summary.load_summaries()
-    genders = {g: analyze_gender(today[g], yesterday[g] if yesterday else None, [h[g] for h in history],
-                                 reviews, PERIODS[period][3])
+    genders = {g: analyze_gender(today[g], yesterday[g] if yesterday else None, [h[g] for h in history], date,
+                                 reviews, PERIODS[period][3], FRESH_DAYS[period])
                for g in GENDERS.values()}
     # 순위가 크게 오른 상품의 원인 (Claude가 조사해 rise_reasons.py로 저장한 것. 아직 없으면 비워 둠)
     reasons = json.loads(RISE_REASONS_PATH.read_text(encoding="utf-8")) if RISE_REASONS_PATH.exists() else {}

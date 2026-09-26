@@ -7,9 +7,10 @@
 - 예전에 같은 상품을 조사한 적이 있으면 --next 목록에 그 원인을 같이 보여 줌 (다시 확인해서 쓰면 됨).
 
 조사 결과 파일 형식(.tmp/rise_batch.json):
-  {"상품번호": {"causes": ["셀럽·인플루언서 착용"], "reason": "…무슨 일이 있었고 왜 순위가 올랐는지…",
+  {"상품번호": {"causes": ["셀럽·인플루언서 착용"], "summary": "…한 줄 원인…", "reason": "…무슨 일이 있었고 왜 순위가 올랐는지…",
                "confidence": "확인", "sources": [{"title": "…", "url": "https://…"}]}, ...}
   - causes: CAUSES 안에서 1~3개 (가장 큰 원인 먼저)
+  - summary: 오늘 요약에 들어갈 한 줄 원인 (30자 이내, 구체적으로 — 예: '패션플래닛 협업 · 9/25 코디 영상')
   - confidence: "확인"(출처로 원인이 직접 확인됨) / "추정"(정황상 가장 그럴듯함 — 설명에 근거를 적을 것)
   - sources: 실제로 열어 본 페이지만. 확인이면 1개 이상 필수. 데이터 단서만으로 쓴 원인은 [] 가능(추정일 때만)
 
@@ -22,12 +23,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from analyze_trends import GENDERS, analyze, build_products, compare_date, load_day, load_details
+from analyze_trends import GENDERS, analyze, compare_date, image_date, load_day
 from common import PERIODS, RISE_REASONS_PATH as REASONS_PATH, TMP_DIR, today_kst
 
 QUEUE_PATH = TMP_DIR / "rise_queue.json"
@@ -42,7 +42,7 @@ CAUSES = [
     "시즌·날씨",              # 기온 변화, 환절기, 명절·행사 수요
 ]
 CONFIDENCE = ("확인", "추정")
-IMG_DATE = re.compile(r"/goods_img/(\d{8})/")
+SUMMARY_MAX = 30  # 오늘 요약에 들어갈 한 줄 원인
 
 
 def load_reasons() -> dict:
@@ -77,10 +77,9 @@ def movers(date: str, period: str) -> list[dict]:
                              f"(할인율 {y.get('discount_rate') or 0}% → {t.get('discount_rate') or 0}%)")
             else:
                 hints.append(f"가격 변화 없음 ({int(t.get('final_price') or 0):,}원, 할인율 {t.get('discount_rate') or 0}%)")
-            d = IMG_DATE.search(m["image_url"])
-            if d:
-                s = d.group(1)
-                hints.append(f"대표 사진 등록일 {s[:4]}-{s[4:6]}-{s[6:]} (상품 등록·사진 교체 시점 추정)")
+            reg = image_date(m["image_url"])
+            if reg:
+                hints.append(f"대표 사진 등록일 {reg} (상품 등록·사진 교체 시점 추정)")
             if brands.count(m["brand"]) > 1:
                 hints.append(f"같은 브랜드 동반 상승 {brands.count(m['brand'])}개")
             for label in ("sales_label", "viewers", "flag"):
@@ -115,6 +114,8 @@ def validate(batch: dict, allowed: set[str]) -> list[str]:
         causes = r.get("causes")
         if not isinstance(causes, list) or not 1 <= len(causes) <= 3 or any(c not in CAUSES for c in causes):
             errs.append(f"{pid}: causes는 다음 중 1~3개 — {', '.join(CAUSES)}")
+        if not isinstance(r.get("summary"), str) or not 5 <= len(r["summary"].strip()) <= SUMMARY_MAX:
+            errs.append(f"{pid}: summary(오늘 요약용 한 줄 원인)가 없거나 {SUMMARY_MAX}자를 넘음")
         if not isinstance(r.get("reason"), str) or len(r["reason"].strip()) < 30:
             errs.append(f"{pid}: reason(설명)이 없거나 너무 짧음 — 무슨 일이 있었고 왜 올랐는지 30자 이상")
         if r.get("confidence") not in CONFIDENCE:
@@ -147,7 +148,8 @@ def main() -> int:
         reasons = load_reasons()
         day = reasons.setdefault(key(args.date, args.period), {})
         for pid, r in batch.items():
-            day[pid] = {"causes": r["causes"], "reason": r["reason"].strip(), "confidence": r["confidence"],
+            day[pid] = {"causes": r["causes"], "summary": r["summary"].strip(), "reason": r["reason"].strip(),
+                        "confidence": r["confidence"],
                         "sources": [{"title": s["title"].strip(), "url": s["url"].strip()} for s in r.get("sources", [])],
                         "checked": today_kst()}
         REASONS_PATH.parent.mkdir(exist_ok=True)
