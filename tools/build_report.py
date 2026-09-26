@@ -175,6 +175,23 @@ td a:hover { text-decoration: underline; }
 .topcard .name { font-size: 13px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .topcard .meta { color: var(--ink-2); }
 .topcard .price { font-weight: 700; font-size: 13px; }
+/* 순위가 오른 이유 (시장 동향) */
+tr.has-why td { border-bottom: 0; }
+tr.why-row td { padding-top: 0; padding-bottom: 12px; }
+.why { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; border-left: 2px solid var(--up-text);
+  padding: 2px 0 2px 10px; }
+.why.none { color: var(--muted); border-left-color: var(--grid); }
+.why .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 3px; }
+.why .tag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--chip); color: var(--ink); }
+.why .conf { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.why .conf.ok { color: var(--up-text); border-color: var(--up-text); }
+.why .src { margin-top: 3px; font-size: 11.5px; }
+.why .src a { color: var(--accent); text-decoration: none; }
+.why .src a:hover { text-decoration: underline; }
+@media (max-width: 640px) {  /* 휴대폰: 카테고리 칸을 빼고 이유가 폭 전체를 쓰게 */
+  table.movers th:nth-child(4), table.movers tr.has-why td:nth-child(4), table.movers tr.why-row td:first-child { display: none; }
+  table.movers th, table.movers td { padding-left: 4px; padding-right: 4px; }
+}
 /* 아이템 종류별 정리 */
 .types { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); gap: 14px; }
 .type-cat { font-size: 15px; margin: 22px 0 10px; color: var(--ink-2); }
@@ -404,28 +421,51 @@ def share_chart(title: str, group: dict, trend_label: str, has_trend: bool) -> s
     return f'<div class="chart"><h3>{e(title)}</h3><p class="cov">{cov}</p>{head if has_trend else ""}{"".join(out)}</div>'
 
 
-def product_table(title: str, products: list[dict], extra_col: str | None = None, empty: str = "") -> str:
-    if not products:
-        return f'<div><h3>{e(title)}</h3><p class="empty">{e(empty or "해당 상품이 없어요.")}</p></div>'
-    head = "<th class='num'>전체 순위</th><th></th><th>상품</th><th>카테고리</th><th class='num'>가격</th>"
-    if extra_col:
-        head += f"<th class='num'>{e(extra_col)}</th>"
-    body = []
-    for p in products:
-        extra = ""
-        if extra_col:
-            extra = f"<td class='num up-t'>▲{p['change']} <small>({p['prev_rank']}→{p['rank']})</small></td>"
-        attrs = " · ".join(p.get("attrs") or [])
-        attrs_html = f"<br><small style='color:var(--muted)'>{e(attrs)}</small>" if attrs else ""
-        body.append(
-            f"<tr><td class='num'>{p['rank']}</td>"
+def why_html(why: dict | None) -> str:
+    """순위가 오른 이유 한 칸: 원인 종류 칩 + 확인/추정 + 설명 + 출처 링크."""
+    if not why:
+        return "<div class='why none'>원인 조사 전 — 매일 오전 10시 조사 후 채워져요.</div>"
+    tags = "".join(f"<span class='tag'>{e(c)}</span>" for c in why["causes"])
+    ok = why["confidence"] == "확인"
+    conf = (f"<span class='conf{' ok' if ok else ''}' title='"
+            f"{'출처로 원인을 직접 확인함' if ok else '직접 증거는 못 찾음 — 정황상 가장 그럴듯한 원인'}'>{e(why['confidence'])}</span>")
+    src = " · ".join(f"<a href='{e(s['url'])}' target='_blank' rel='noopener'>{e(s['title'])}</a>" for s in why["sources"])
+    return (f"<div class='why'><div class='tags'>{tags}{conf}</div>{e(why['reason'])}"
+            + (f"<div class='src'>출처: {src}</div>" if src else "") + "</div>")
+
+
+PRODUCT_HEAD = "<th class='num'>전체 순위</th><th></th><th>상품</th><th>카테고리</th><th class='num'>가격</th>"
+
+
+def product_cells(p: dict) -> str:
+    attrs = " · ".join(p.get("attrs") or [])
+    attrs_html = f"<br><small style='color:var(--muted)'>{e(attrs)}</small>" if attrs else ""
+    return (f"<td class='num'>{p['rank']}</td>"
             f"<td><img src='{e(p['image_url'])}' alt='' loading='lazy' referrerpolicy='no-referrer'></td>"
             f"<td><a href='{e(p['product_url'])}' target='_blank' rel='noopener'><small>{e(p['brand'])}</small><br>"
             f"{e(p['product_name'])}</a>{attrs_html}</td>"
             f"<td>{e(p['category_name'])}<br><small>{e(p['item_type'])}</small></td>"
-            f"<td class='num'>{won(p['final_price'])}</td>{extra}</tr>")
-    return (f'<div><h3>{e(title)}</h3><div class="table-wrap"><table><thead><tr>{head}</tr></thead>'
-            f'<tbody>{"".join(body)}</tbody></table></div></div>')
+            f"<td class='num'>{won(p['final_price'])}</td>")
+
+
+def mover_table(title: str, products: list[dict], empty: str = "") -> str:
+    """순위가 크게 오른 상품 + 오른 이유(상품 아래 줄)."""
+    if not products:
+        return f'<div><h3>{e(title)}</h3><p class="empty">{e(empty or "해당 상품이 없어요.")}</p></div>'
+    body = "".join(
+        f"<tr class='has-why'>{product_cells(p)}"
+        f"<td class='num up-t'>▲{p['change']}<br><small>({p['prev_rank']}→{p['rank']})</small></td></tr>"
+        f"<tr class='why-row'><td></td><td colspan='5'>{why_html(p.get('why'))}</td></tr>" for p in products)
+    return (f'<div><h3>{e(title)}</h3><div class="table-wrap"><table class="movers"><thead><tr>{PRODUCT_HEAD}'
+            f"<th class='num'>변화</th></tr></thead><tbody>{body}</tbody></table></div></div>")
+
+
+def product_table(title: str, products: list[dict], empty: str = "") -> str:
+    if not products:
+        return f'<div><h3>{e(title)}</h3><p class="empty">{e(empty or "해당 상품이 없어요.")}</p></div>'
+    body = "".join(f"<tr>{product_cells(p)}</tr>" for p in products)
+    return (f'<div><h3>{e(title)}</h3><div class="table-wrap"><table><thead><tr>{PRODUCT_HEAD}</tr></thead>'
+            f'<tbody>{body}</tbody></table></div></div>')
 
 
 COLOR_HEX = {  # 컬러 칩에 보여줄 실제 색 (대표색)
@@ -806,8 +846,11 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
     {price_section(g.get('price_bands'))}
   </section>""",
         "동향": f"""
-  <section class="card two">
-    {product_table(f"{WORD['prev']}보다 순위가 크게 오른 상품", g['movers'], extra_col='변화', empty=no_yday if not has_yesterday else '')}
+  <section class="card">
+    {mover_table(f"{WORD['prev']}보다 순위가 크게 오른 상품", g['movers'], empty=no_yday if not has_yesterday else '')}
+    <p class="note">오른 이유 = Claude가 웹·유튜브·SNS·커뮤니티를 조사해 찾은 유입 경로. <b>확인</b> = 출처에서 이 상품(또는 같은 모델)이 직접 소개된 것을 확인, <b>추정</b> = 직접 증거는 못 찾아 정황(할인·브랜드 노출·시즌)으로 판단. 일간 순위는 전날 판매가 반영돼요.</p>
+  </section>
+  <section class="card">
     {product_table('오늘 새로 TOP 50에 진입', g['new_entries'], empty=no_yday if not has_yesterday else '')}
   </section>""",
     }

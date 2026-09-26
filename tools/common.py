@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HISTORY_DIR = ROOT / "data" / "history"  # 일간 랭킹 (주간·월간은 history_path로)
 UPDATES_PATH = ROOT / "data" / "ranking_updates.json"
 DETAILS_PATH = ROOT / "data" / "product_details.json"
+RISE_REASONS_PATH = ROOT / "data" / "rise_reasons.json"  # 순위 급상승 원인 (Claude 조사, rise_reasons.py)
 TMP_DIR = ROOT / ".tmp"
 DOCS_DIR = ROOT / "docs"
 

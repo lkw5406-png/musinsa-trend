@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 
 import review_summary
 from classify_attributes import GROUP_LABELS, GROUPS, classify
-from common import DETAILS_PATH, PERIODS, TMP_DIR, history_path, today_kst
+from common import DETAILS_PATH, PERIODS, RISE_REASONS_PATH, TMP_DIR, history_path, today_kst
 
 MAX_RANK = 300  # musinsa_fetch.py와 같게
 GENDERS = {"M": "남성", "F": "여성"}
@@ -428,6 +428,15 @@ def analyze(date: str, period: str = "daily") -> dict:
 
     ids = {r["product_id"] for r in rows}
     reviews = review_summary.load_summaries()
+    genders = {g: analyze_gender(today[g], yesterday[g] if yesterday else None, [h[g] for h in history],
+                                 reviews, PERIODS[period][3])
+               for g in GENDERS.values()}
+    # 순위가 크게 오른 상품의 원인 (Claude가 조사해 rise_reasons.py로 저장한 것. 아직 없으면 비워 둠)
+    reasons = json.loads(RISE_REASONS_PATH.read_text(encoding="utf-8")) if RISE_REASONS_PATH.exists() else {}
+    day_reasons = reasons.get(f"{period}:{date}", {})
+    for g in genders.values():
+        for m in g["movers"]:
+            m["why"] = day_reasons.get(m["product_id"])
     return {
         "date": date,
         "period": period,
@@ -436,9 +445,7 @@ def analyze(date: str, period: str = "daily") -> dict:
         "history_days": len(history),
         "has_yesterday": yesterday is not None,
         "detail_coverage": round(100 * sum(1 for i in ids if i in details) / max(1, len(ids)), 1),
-        "genders": {g: analyze_gender(today[g], yesterday[g] if yesterday else None, [h[g] for h in history],
-                                      reviews, PERIODS[period][3])
-                    for g in GENDERS.values()},
+        "genders": genders,
     }
 
 
