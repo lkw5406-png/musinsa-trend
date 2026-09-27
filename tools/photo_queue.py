@@ -1,8 +1,10 @@
-"""사진 판독 도우미 Tool — 리포트 '디자인 참고' 아이템 카드에 들어가는데 칸이 빈 **새 상품**만 골라 사진을 받아 두고,
+"""사진 판독 도우미 Tool — 리포트 '디자인 참고'의 아이템 카드·대분류별 순위에 들어가는데 칸이 빈 상품만 골라 사진을 받아 두고,
 Claude가 사진을 보고 쓴 판독 결과를 검사해서 data/photo_labels.json에 합친다.
 
-- 이미 판독한 상품(photo_labels.json에 있는 상품)은 다시 고르지 않음 → 매일 새로 들어온 상품만.
-- 칸 = 실루엣·기장(팬츠류만), 원단, 핏, 소재, 컬러, 디테일 (analyze_trends.ITEM_PROFILE_GROUPS와 같음)
+- 이미 판독한 칸(photo_labels.json에 그 칸이 있는 상품)은 다시 고르지 않음 → 매일 새로 들어온 상품·새로 필요해진 칸만.
+- 아이템 카드 칸 = 실루엣·기장(팬츠류만), 원단, 핏, 소재, 컬러, 디테일 (analyze_trends.ITEM_PROFILE_GROUPS와 같음)
+- 대분류(아우터·상의·하의) 칸 = 핏, 실루엣·기장(전부), 디테일, 컬러 (analyze_trends.BIG_CATEGORY_GROUPS)
+  상의·아우터 기장이 평범하면 '레귤러 기장', 디테일이 없으면 '무지/베이직'.
 - 판독이 확실하지 않은 칸은 빈 목록([])으로 적으면 '봤지만 모름'으로 기록되어 다시 고르지 않음.
 - 사진은 .tmp/photos/ 에만 (공개 저장소에 올리지 않음).
 
@@ -24,7 +26,8 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from analyze_trends import ITEM_PROFILE_GROUPS, ITEM_PROFILE_MIN, SILHOUETTE_PROFILE_CODES, build_products, load_day, load_details
+from analyze_trends import (BIG_CATEGORY_GROUPS, ITEM_PROFILE_GROUPS, ITEM_PROFILE_MIN, SILHOUETTE_PROFILE_CODES,
+                            big_category, build_products, load_day, load_details)
 from classify_attributes import GROUP_LABELS, KEYWORDS_PATH, PHOTO_LABELS_PATH
 from common import PERIODS, TMP_DIR, USER_AGENT, today_kst
 
@@ -42,8 +45,22 @@ def load_labels() -> dict:
     return json.loads(PHOTO_LABELS_PATH.read_text(encoding="utf-8")) if PHOTO_LABELS_PATH.exists() else {}
 
 
+def needed_groups(p: dict, in_card: bool) -> set[str]:
+    """이 상품이 리포트에서 채워져야 하는 칸.
+    - 아이템 카드: ITEM_PROFILE_GROUPS (실루엣은 팬츠류만)
+    - 대분류별 핏·실루엣·디테일·컬러: 아우터·상의·하의 전부 (2026-09-27 사장님 지시 "대분류별 파악률 100%")"""
+    need = set()
+    if in_card:
+        need |= {g for g in ITEM_PROFILE_GROUPS
+                 if not (g == "silhouette" and p["category_code"] not in SILHOUETTE_PROFILE_CODES)}
+    if big_category(p):
+        need |= set(BIG_CATEGORY_GROUPS)
+    return need
+
+
 def targets(date: str) -> list[dict]:
-    """오늘 리포트(일간·주간·월간 중 기록이 있는 것) 아이템 카드 상품 중 빈 칸이 있고 아직 판독 안 한 상품. 순위 높은 순."""
+    """오늘 리포트(일간·주간·월간 중 기록이 있는 것)의 아이템 카드·대분류 상품 중, 아직 사진으로 안 본 빈 칸이 있는 상품.
+    칸 단위로 봄: 예전에 다른 칸만 판독한 상품도 새로 필요해진 칸이 비어 있으면 다시 고름. 순위 높은 순."""
     labels, details = load_labels(), load_details()
     found: dict[str, dict] = {}
     for period in PERIODS:
@@ -51,22 +68,23 @@ def targets(date: str) -> list[dict]:
         if not rows:
             continue
         for gender, products in build_products(rows, details).items():
-            by_type: dict[str, list[dict]] = {}
+            type_count: dict[str, int] = {}
             for p in products:
-                by_type.setdefault(p["item_type"], []).append(p)
-            for item_type, items in by_type.items():
-                if len(items) < ITEM_PROFILE_MIN:
-                    continue  # 카드로 안 나오는 아이템 종류
-                for p in items:
-                    pid = p["product_id"]
-                    if pid in labels or pid in found:
-                        continue
-                    blanks = [g for g in ITEM_PROFILE_GROUPS if not p[g]
-                              and not (g == "silhouette" and p["category_code"] not in SILHOUETTE_PROFILE_CODES)]
-                    if blanks:
-                        found[pid] = {"product_id": pid, "name": p["product_name"], "brand": p["brand"],
-                                      "item_type": item_type, "category": p["category_name"], "gender": gender,
-                                      "rank": p["clothing_rank"], "blanks": blanks, "image_url": p["image_url"]}
+                type_count[p["item_type"]] = type_count.get(p["item_type"], 0) + 1
+            for p in products:
+                pid = p["product_id"]
+                seen = labels.get(pid, {})
+                need = needed_groups(p, type_count[p["item_type"]] >= ITEM_PROFILE_MIN)
+                blanks = [g for g in ITEM_PROFILE_GROUPS if g in need and not p[g] and g not in seen]
+                if not blanks:
+                    continue
+                if pid in found:
+                    found[pid]["blanks"] = [g for g in ITEM_PROFILE_GROUPS if g in blanks or g in found[pid]["blanks"]]
+                    found[pid]["rank"] = min(found[pid]["rank"], p["clothing_rank"])
+                    continue
+                found[pid] = {"product_id": pid, "name": p["product_name"], "brand": p["brand"],
+                              "item_type": p["item_type"], "category": p["category_name"], "gender": gender,
+                              "rank": p["clothing_rank"], "blanks": blanks, "image_url": p["image_url"]}
     return sorted(found.values(), key=lambda x: x["rank"])
 
 
@@ -143,7 +161,7 @@ def main() -> int:
             return 1
         labels = load_labels()
         for pid, lab in batch.items():
-            labels[pid] = {**lab, "checked": args.date}
+            labels[pid] = {**labels.get(pid, {}), **lab, "checked": args.date}  # 예전에 판독한 다른 칸은 그대로 둠
         tmp = PHOTO_LABELS_PATH.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(labels, ensure_ascii=False, indent=1), encoding="utf-8")
         tmp.replace(PHOTO_LABELS_PATH)

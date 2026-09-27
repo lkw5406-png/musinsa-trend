@@ -29,7 +29,7 @@ KEYWORDS_PATH = Path(__file__).resolve().parent / "attribute_keywords.json"
 PHOTO_LABELS_PATH = Path(__file__).resolve().parent.parent / "data" / "photo_labels.json"
 KEYWORD_GROUPS = ("fit", "silhouette", "fiber", "texture", "color", "detail")
 GROUPS = ("item_type", "fit", "silhouette", "fiber", "texture", "color", "detail", "thickness")
-LENGTH_LABELS = {"롱/맥시 기장", "미디 기장", "미니/숏 기장", "크롭"}
+LENGTH_LABELS = {"롱/맥시 기장", "미디 기장", "레귤러 기장", "미니/숏 기장", "크롭"}
 SHAPE_LABELS = {"와이드", "스트레이트", "부츠컷/플레어", "테이퍼드", "머메이드", "A라인", "H라인"}
 GROUP_LABELS = {"item_type": "아이템", "fit": "핏", "silhouette": "실루엣", "fiber": "소재(주원료)",
                 "texture": "원단·가공", "color": "컬러", "detail": "디테일", "thickness": "두께"}
@@ -115,6 +115,10 @@ CATEGORY_LENGTH = {"미니스커트": "미니/숏 기장", "미니원피스": "�
 TOP_CROP_RATIO = 1.0        # 상의·아우터: 총장 ÷ 가슴단면이 이보다 작고
 TOP_CROP_MAX_LENGTH = 58    # … 총장이 이 이하일 때만 크롭
 OUTER_LONG_LENGTH = 95      # 아우터: 총장이 이 이상이면 롱 기장
+OUTER_MIDI_LENGTH = 80      # 아우터: 총장이 이 이상(롱 미만)이면 미디 기장(하프 코트 등)
+# 그 밖(크롭도 롱도 아닌 상의·아우터)은 레귤러 기장. 이름에 기장이 없는 상의·아우터 총장은 대부분 55~75cm
+# (2026-09-27 상의 368개 중앙값 66.5, 아우터 552개 중앙값 65) — 사장님 지시 "대분류별 실루엣 파악률 100%"
+TOP_REGULAR_MAX_LENGTH = 80 # 상의: 총장이 이 미만이면 레귤러 기장 (그 이상은 사진 판독)
 PANTS_TAPERED = 0.6         # 바지: 밑단단면 ÷ 허벅지단면이 이보다 작으면 테이퍼드
 PANTS_FLARE = 0.95          # … 이 이상이면서 허벅지가 PANTS_WIDE_THIGH 미만이면 부츠컷/플레어
 PANTS_WIDE_THIGH = 33       # … 허벅지단면이 이 이상이면 와이드
@@ -132,6 +136,10 @@ def size_silhouette(size: dict | None, category_code: str) -> list[str]:
             out.append("크롭")
         elif category_code == "002" and length >= OUTER_LONG_LENGTH:
             out.append("롱/맥시 기장")
+        elif category_code == "002" and length >= OUTER_MIDI_LENGTH:
+            out.append("미디 기장")
+        elif category_code == "002" or length < TOP_REGULAR_MAX_LENGTH:
+            out.append("레귤러 기장")
     thigh, hem = size.get("허벅지단면"), size.get("밑단단면")
     if category_code == "003" and thigh and hem and (length or 0) >= 80:  # 반바지는 모양 판단 안 함
         ratio = hem / thigh
