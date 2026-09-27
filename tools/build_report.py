@@ -568,12 +568,11 @@ PURPOSES = [  # 목적별 탭 (주소 끝 #여성-소재컬러 처럼 공유 가
     ("인기", "인기 TOP"),
     ("기획", "카테고리 순위"),
     ("디자인", "디자인 참고"),
-    ("소재컬러", "소재·컬러"),
+    ("소재컬러", "컬러"),  # 주소(#여성-소재컬러)는 공유된 링크가 안 깨지게 그대로. 원단·소재 카드는 2026-09-27 사장님 결정으로 뺌
     ("가격", "가격"),
     ("동향", "시장 동향"),
 ]
 DESIGN_CHARTS = [("fit", "핏"), ("silhouette", "실루엣·기장"), ("detail", "디테일")]
-MATERIAL_CHARTS = [("texture", "원단·가공"), ("fiber", "소재(주원료)")]
 TOP_VISIBLE = 20  # 인기 TOP: 처음 보이는 개수, 나머지는 '더보기'로
 MORE_STEP = 50    # 더보기 한 번에 50위 단위까지 (21~50 → 51~100 → …, 2026-09-27 사장님)
 BRIEF_PRODUCTS = 3  # 오늘 요약에 넣을 상품·브랜드 수
@@ -765,16 +764,12 @@ def big_category_charts(gi: int, g: dict) -> str:
 
 
 def big_category_palettes(g: dict) -> str:
-    """소재·컬러: 아우터/상의/하의 컬러 팔레트를 차례로."""
+    """컬러: 아우터/상의/하의 컬러 팔레트를 차례로."""
     cats = g.get("big_categories") or []
     if not cats:
         return '<p class="empty">데이터가 없어요.</p>'
     return "".join(f"<h3 class='sec-h pal-h'>{e(c['name'])} <small>{c['count']}개</small></h3>"
                    f"{palette(c['attributes']['color'], g['has_trend'])}" for c in cats)
-
-
-def charts_html(g: dict, groups: list[tuple[str, str]]) -> str:
-    return "".join(share_chart(title, g["attributes"][key], g["trend_label"], g["has_trend"]) for key, title in groups)
 
 
 def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
@@ -827,11 +822,6 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
     <h2>컬러 팔레트</h2>
     <p class="sub">대분류별로 잘 팔리는 컬러를 인기 비중 순으로. 여러 색으로 파는 상품은 판매 중인 색을 모두 셌어요.{' 작은 숫자 = ' + WORD['prev'] + ' 대비 변화.' if g['has_trend'] else ''}</p>
     {big_category_palettes(g)}
-  </section>
-  <section class="card">
-    <h2>원단 · 소재</h2>
-    <p class="sub">{chart_sub} 소재 = 상품정보제공고시의 겉감 주원료.</p>
-    <div class="charts">{charts_html(g, MATERIAL_CHARTS)}</div>
   </section>""",
         "가격": f"""
   <section class="card">
