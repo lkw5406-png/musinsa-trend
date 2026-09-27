@@ -14,15 +14,30 @@ import argparse
 import json
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept-Language": "ko-KR,ko;q=0.9"}
+from common import TMP_DIR, USER_AGENT
+
+# 수집 원칙과 같게: 정직한 이름표, 브라우저 위장 금지 (2026-09-27 사장님 확인)
+UA = {"User-Agent": USER_AGENT, "Accept-Language": "ko-KR,ko;q=0.9"}
 RECENT = re.compile(r"(분|시간|[1-9]일) 전|1주 전|스트리밍")
+# 요청 사이 쉬는 시간. 쉬지 않고 연달아 부르면 429(요청 과다)로 막힘 (2026-09-27).
+# 반복문으로 이 Tool을 여러 번 실행해도 지켜지게 마지막 요청 시각을 파일에 남김
+REQUEST_INTERVAL_SEC = 3
+LAST_REQUEST_PATH = TMP_DIR / "web_research.last"
 
 
 def fetch(url: str) -> str:
+    try:
+        last = float(LAST_REQUEST_PATH.read_text())
+    except (OSError, ValueError):
+        last = 0.0
+    time.sleep(max(0.0, min(REQUEST_INTERVAL_SEC, last + REQUEST_INTERVAL_SEC - time.time())))
+    TMP_DIR.mkdir(exist_ok=True)
+    LAST_REQUEST_PATH.write_text(str(time.time()))
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
         return r.read().decode("utf-8", "ignore")
 
