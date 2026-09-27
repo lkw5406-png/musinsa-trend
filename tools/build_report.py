@@ -211,7 +211,7 @@ tr.why-row td { padding-top: 10px; padding-bottom: 18px; }
 .brief li::marker { color: var(--muted); }
 .brief .hint { font-size: 12px; color: var(--muted); margin-left: 4px; }
 /* section.card .sub(카드 설명 문단)보다 우선해야 간격이 먹힘 — '.brief .sub'만 쓰면 덮여서 안 바뀜 */
-section.card .brief .sub { margin: 24px 0 6px; padding-left: 1.1em; display: flex; flex-direction: column; gap: 7px;
+section.card .brief .sub { margin: 1lh 0 6px; padding-left: 1.1em; display: flex; flex-direction: column; gap: 7px;
   font-size: 13px; color: var(--muted); list-style: circle; }
 .brief .sub a { color: var(--ink); text-decoration: none; }
 .brief .sub a:hover { text-decoration: underline; }
