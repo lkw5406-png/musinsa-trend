@@ -43,6 +43,7 @@
 자동 실행: `.github/workflows/daily.yml` (GitHub Actions, UTC 21:00 본 실행 + UTC 03:00·11:00 재확인, 제한 300분). 실패하면 GitHub이 저장소 주인 계정 이메일로 자동 알림.
 (`tools/send_email.py` + `--alert-on-fail`은 PC에서 돌릴 때 Gmail로 알림을 받고 싶을 때만 사용 — 현재 미사용)
 사진을 품은 한 장짜리 페이지(Claude 링크 등): `python tools/build_report.py --date 날짜 --standalone 파일.html`
+(`build_report.py`는 `.tmp/analysis_날짜.json`이 있어야 함 — 새 PC·`.tmp` 비운 뒤엔 없어서 FileNotFoundError. 아래 7번 '오늘 리포트 다시 만들기'로 분석부터 다시 하면 됨. 2026-09-27 새 PC 이사 때 발견)
 
 ## 사진 판독 (매일 자동, 2026-09-26 사장님 결정)
 디자인 참고 아이템 카드에 들어가는 상품 중 상품명·설명·사이즈표로 못 채운 칸(원단·핏·소재·컬러·디테일, 팬츠류 실루엣)을 **Claude가 대표 사진을 보고** 채움. 이미 판독한 상품은 다시 안 봄 → 매일 **새로 들어온 상품만**.

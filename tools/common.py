@@ -67,8 +67,11 @@ def today_kst() -> str:
 
 
 def load_env() -> None:
-    """.env의 '이름=값' 줄을 환경변수로 읽음. 이미 설정된 값(클라우드 Secrets)은 덮어쓰지 않음."""
-    env_path = ROOT / ".env"
+    """.env의 '이름=값' 줄을 환경변수로 읽음. 이미 설정된 값(클라우드 Secrets)은 덮어쓰지 않음.
+    PC에서는 OneDrive 동기화를 피해 ~/.secrets/musinsa-trend.env에 둠 (없으면 폴더 안 .env)."""
+    env_path = Path.home() / ".secrets" / "musinsa-trend.env"
+    if not env_path.exists():
+        env_path = ROOT / ".env"
     if not env_path.exists():
         return
     for line in env_path.read_text(encoding="utf-8").splitlines():
