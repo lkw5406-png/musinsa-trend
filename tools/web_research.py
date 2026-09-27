@@ -46,6 +46,10 @@ def search(q: str, recent: bool) -> list[str]:
                 if not recent or RECENT.search(pub):
                     out.append(f"  {pub:10} | {text(v.get('viewCountText', {})):14} | {text(v.get('ownerText', {}))} | "
                                f"{text(v.get('title', {}))} | https://youtu.be/{v.get('videoId')}")
+                    # 설명란 발췌(검색어가 걸린 부분) — 영상 페이지가 429로 막혀도 설명란에 상품이 있는지 볼 수 있음
+                    snip = " ".join(text(s.get("snippetText", {})) for s in v.get("detailedMetadataSnippets", []))
+                    if snip.strip():
+                        out.append(f"      └ 설명란 발췌: {snip.strip()[:200]}")
             for x in o.values():
                 walk(x)
         elif isinstance(o, list):
