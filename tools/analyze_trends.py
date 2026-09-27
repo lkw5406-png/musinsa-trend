@@ -168,18 +168,24 @@ def _median(values: list[int]) -> int | None:
     return values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) // 2
 
 
-def top_by_category(products: list[dict], n: int = 10, reviews: dict | None = None) -> list[dict]:
-    """카테고리(상의/아우터/바지/원피스·스커트)별 인기 TOP n. 후기 요약(review_summary.py)이 있으면 같이 붙임."""
+def top_by_category(products: list[dict], n: int | None = None, reviews: dict | None = None) -> list[dict]:
+    """인기 TOP: 맨 앞 '전체'(의류 1~300위) + 카테고리(상의/아우터/바지/원피스·스커트)별 순위. n=None이면 전부
+    (2026-09-27 사장님: 50위까지만 → 전부). 후기 요약(review_summary.py)은 카테고리별 TOP 50 상품에만 붙임
+    — 후기를 모으는 대상이 그 상품들이라, 그 밖의 상품에 붙은 예전 요약은 오래된 것일 수 있어서."""
     reviews = reviews or {}
+    groups = [(code, [p for p in products if p["category_code"] == code]) for code in CATEGORY_ORDER]
+    groups = [(code, items) for code, items in groups if items]
+    targets = {p["product_id"] for _, items in groups for p in items[:REVIEW_TOP_N]}
+    everything = sorted((p for _, items in groups for p in items), key=lambda p: p["clothing_rank"])
     out = []
-    for code in CATEGORY_ORDER:
-        items = [p for p in products if p["category_code"] == code]
-        if items:
-            briefs = [product_brief(p) for p in items[:n]]
-            for b in briefs[:REVIEW_TOP_N]:
-                if b["product_id"] in reviews:
-                    b["review"] = reviews[b["product_id"]]
-            out.append({"code": code, "name": items[0]["category_name"], "count": len(items), "products": briefs})
+    for code, name, items in [("all", "전체", everything)] + [(c, i[0]["category_name"], i) for c, i in groups]:
+        if not items:
+            continue
+        briefs = [product_brief(p) for p in items[:n]]
+        for b in briefs:
+            if b["product_id"] in targets and b["product_id"] in reviews:
+                b["review"] = reviews[b["product_id"]]
+        out.append({"code": code, "name": name, "count": len(items), "products": briefs})
     return out
 
 
@@ -452,7 +458,7 @@ def analyze_gender(today: list[dict], yesterday: list[dict] | None, history: lis
         "trend_label": trend_label,
         "headlines": headlines,
         "attributes": attributes,
-        "top_by_category": top_by_category(today, n=50, reviews=reviews),  # 화면엔 20개, 더보기로 50개
+        "top_by_category": top_by_category(today, reviews=reviews),  # 전부. 화면엔 20개, 더보기로 50위씩
         "big_categories": by_big_category(today, yesterday),
         "item_types": item_type_profiles(today, yesterday),
         "price_bands": price_bands(today),

@@ -320,12 +320,19 @@ document.querySelectorAll('.pswitch a').forEach(a => a.addEventListener('click',
   ev.preventDefault(); location.href = a.getAttribute('href') + viewHash();
 }));
 
-// 카테고리별 인기 TOP: 더보기 / 접기
-document.querySelectorAll('.more').forEach(b => b.addEventListener('click', () => {
-  const extra = b.parentElement.querySelectorAll('.extra'), open = extra.length && extra[0].hidden;
-  extra.forEach(x => x.hidden = !open);
-  b.textContent = open ? b.dataset.close : b.dataset.open;
-}));
+// 인기 TOP: 더보기(50위 단위로 하나씩 더 펼침) → 다 펼치면 접기
+document.querySelectorAll('.more').forEach(b => {
+  const cards = [...b.parentElement.querySelectorAll('.topcard')], first = +b.dataset.visible, step = +b.dataset.step;
+  let shown = first;
+  b.addEventListener('click', () => {
+    const closing = shown >= cards.length;
+    shown = closing ? first : Math.min(cards.length, (Math.floor(shown / step) + 1) * step);
+    cards.forEach((c, i) => c.hidden = i >= shown);
+    const next = Math.min(cards.length, (Math.floor(shown / step) + 1) * step);
+    b.textContent = shown >= cards.length ? '접기' : `더보기 · ${shown + 1}~${next}위`;
+    if (closing) b.parentElement.scrollIntoView({block: 'start'});
+  });
+});
 
 // 날짜 선택: 최신 목록(dates.json)을 불러와 채움. 못 불러오면 페이지에 들어 있는 목록을 씀.
 const pick = document.getElementById('date');
@@ -481,13 +488,13 @@ def top10_section(idx: int, cats: list[dict]) -> str:
         btns.append(f"<button type='button' data-show='{pid}' aria-selected='{str(i == 0).lower()}'>"
                     f"{e(c['name'])} <small>({c['count']})</small></button>")
         cards = []
-        extra = len(c["products"]) - TOP_VISIBLE
+        total = len(c["products"])
         for n, p in enumerate(c["products"], 1):
             attrs = " · ".join(p.get("attrs") or [])
             attrs_html = f"<span class='meta'>{e(attrs)}</span>" if attrs else ""
             hide = " hidden" if n > TOP_VISIBLE else ""
             cards.append(
-                f"<div class='topcard{' extra' if hide else ''}'{hide}>"
+                f"<div class='topcard'{hide}>"
                 f"<a class='tlink' href='{e(p['product_url'])}' target='_blank' rel='noopener'>"
                 f"<span class='rk'>{n}</span>"
                 f"<img src='{e(p['image_url'])}' alt='' loading='lazy' referrerpolicy='no-referrer'>"
@@ -497,8 +504,8 @@ def top10_section(idx: int, cats: list[dict]) -> str:
                 f"<span class='meta'>{e(p['item_type'])} · 전체 {p['rank']}위</span>{attrs_html}</div></a>"
                 f"{review_html(p.get('review'))}</div>")
         hidden = "hidden" if i else ""
-        more = (f"<button type='button' class='more' data-open='더보기 · {TOP_VISIBLE + 1}~{len(c['products'])}위' "
-                f"data-close='접기'>더보기 · {TOP_VISIBLE + 1}~{len(c['products'])}위</button>") if extra > 0 else ""
+        more = (f"<button type='button' class='more' data-visible='{TOP_VISIBLE}' data-step='{MORE_STEP}'>"
+                f"더보기 · {TOP_VISIBLE + 1}~{min(total, MORE_STEP)}위</button>") if total > TOP_VISIBLE else ""
         panels.append(f"<div class='seg-panel' id='{pid}' {hidden}><div class='topgrid'>{''.join(cards)}</div>{more}</div>")
     return f"<div><div class='seg' role='tablist'>{''.join(btns)}</div>{''.join(panels)}</div>"
 
@@ -558,7 +565,7 @@ def price_section(pb: dict | None) -> str:
 
 PURPOSES = [  # 목적별 탭 (주소 끝 #여성-소재컬러 처럼 공유 가능). 2026-09-25 디자이너 실무용으로 개편
     ("요약", "오늘 요약"),
-    ("인기", "카테고리별 인기 TOP"),
+    ("인기", "인기 TOP"),
     ("기획", "카테고리 순위"),
     ("디자인", "디자인 참고"),
     ("소재컬러", "소재·컬러"),
@@ -567,7 +574,8 @@ PURPOSES = [  # 목적별 탭 (주소 끝 #여성-소재컬러 처럼 공유 가
 ]
 DESIGN_CHARTS = [("fit", "핏"), ("silhouette", "실루엣·기장"), ("detail", "디테일")]
 MATERIAL_CHARTS = [("texture", "원단·가공"), ("fiber", "소재(주원료)")]
-TOP_VISIBLE = 20  # 카테고리별 인기 TOP: 처음 보이는 개수, 나머지는 '더보기'로 (최대 50)
+TOP_VISIBLE = 20  # 인기 TOP: 처음 보이는 개수, 나머지는 '더보기'로
+MORE_STEP = 50    # 더보기 한 번에 50위 단위까지 (21~50 → 51~100 → …, 2026-09-27 사장님)
 BRIEF_PRODUCTS = 3  # 오늘 요약에 넣을 상품·브랜드 수
 
 
@@ -787,9 +795,9 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
   </section>""",
         "인기": f"""
   <section class="card">
-    <h2>카테고리별 인기 TOP {TOP_VISIBLE}</h2>
-    <p class="sub">카테고리를 눌러 바꿔 보세요. 맨 아래 '더보기'로 50위까지. 번호 = 카테고리 안 순위, '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위.
-    카드 아래 후기 요약(50위까지) = 도움순 후기 50개·별점 낮은 후기 최대 50개에서 자주 나온 표현(좋아요 = 4~5점 후기, 아쉬워요 = 3점 이하 후기)과 대표 후기.</p>
+    <h2>인기 TOP</h2>
+    <p class="sub">카테고리를 눌러 바꿔 보세요. 맨 아래 '더보기'로 50위씩 더 볼 수 있어요. 번호 = '전체'는 의류 순위, 나머지는 카테고리 안 순위. 카드의 '전체 N위' = 신발·가방 등을 포함한 무신사 전체 순위.
+    카드 아래 후기 요약(카테고리별 50위까지) = 도움순 후기 50개·별점 낮은 후기 최대 50개에서 자주 나온 표현(좋아요 = 4~5점 후기, 아쉬워요 = 3점 이하 후기)과 대표 후기.</p>
     {top10_section(gi, g.get('top_by_category', []))}
   </section>""",
         "기획": f"""
