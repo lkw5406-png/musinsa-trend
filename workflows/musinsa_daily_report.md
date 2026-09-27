@@ -33,7 +33,7 @@
 | 2. 빠진 상세정보 채우기 | `tools/product_details.py` | `data/product_details.json` (상품별 누적 저장소) |
 | 2-2. 후기 요약 (카테고리별 인기 TOP 50, 7일에 한 번, 하루 최대 120개) | `tools/review_summary.py` | `data/review_summaries.json` |
 | 3. 분석 | `tools/analyze_trends.py --period` (분류: `tools/classify_attributes.py` + `tools/attribute_keywords.json`) | `.tmp/analysis_YYYY-MM-DD.json` (주간·월간은 `analysis_weekly_…`) |
-| 3-2. 순위 급상승 원인 (Claude 조사, 10시 루틴) | `tools/rise_reasons.py` + `tools/web_research.py` | `data/rise_reasons.json` (키 = `기간:날짜` → 상품번호) |
+| 3-2. 순위 급상승 원인 (Claude 조사, 수집 직후 자동 · 예비 13시 루틴) | `tools/rise_reasons.py` + `tools/web_research.py` | `data/rise_reasons.json` (키 = `기간:날짜` → 상품번호) |
 | 4. 리포트 | `tools/build_report.py --period` | `docs/`(일간), `docs/weekly/`, `docs/monthly/` 각각 `index.html`(최신)·`reports/날짜.html`·`dates.json` |
 
 - 상품 상세정보·사진 판독·후기 요약은 상품 단위라 세 기간이 같이 씀 (같은 상품을 두 번 받지 않음).
@@ -64,7 +64,7 @@
 ## 순위 급상승 원인 조사 (매일, 2026-09-27 사장님 지시)
 '시장 동향'의 '순위가 크게 오른 상품'(성별마다 최대 10개, 하루 약 20개)마다 **왜 올랐는지, 유입이 어디서 왔는지**를
 웹·유튜브·SNS·커뮤니티로 깊게 조사해 적는다. 인기 브랜드 신상품이 원인이면 그렇게 적어도 됨. 유료 API 없이 Claude가 직접.
-- **자동**: 사진 판독과 같은 루틴에서 이어서 (사진 판독 → 원인 조사 → 리포트 다시 만들기 → 푸시). 2026-09-27 사장님 지시로 10시까지 기다리지 않고 **수집이 끝나자마자** 시작: `daily.yml` 마지막 단계가 오늘 일간 랭킹을 새로 저장한 실행에서만 루틴 API 트리거를 부름(GitHub Secrets `CLAUDE_ROUTINE_URL`·`CLAUDE_ROUTINE_TOKEN`, claude.ai 루틴 편집 → API 트리거에서 발급). 비밀값이 없으면 그 단계는 건너뛰고 루틴 자체 예약 시간에 돎
+- **자동**: 사진 판독과 같은 루틴에서 이어서 (사진 판독 → 원인 조사 → 리포트 다시 만들기 → 푸시). 2026-09-27 사장님 지시로 10시까지 기다리지 않고 **수집이 끝나자마자** 시작: `daily.yml` 마지막 단계가 오늘 일간 랭킹을 새로 저장한 실행에서만 루틴 API 트리거를 부름(GitHub Secrets `CLAUDE_ROUTINE_URL`·`CLAUDE_ROUTINE_TOKEN`, claude.ai 루틴 편집 → API 트리거에서 발급). 비밀값이 없거나 부르기가 실패하면 루틴의 예비 예약(매일 13:07 KST)에 돎 — 이미 끝난 날은 금방 끝나고, 한 번에 150개 제한으로 남은 사진은 이때 마저 처리
 - 순서:
   1. `python tools/rise_reasons.py --check` → 오늘 리포트 기간별 조사할 개수 (일간 매일, 주간 월요일, 월간 1일)
   2. `python tools/rise_reasons.py --next --period daily` → `.tmp/rise_queue.json` + 화면에 상품별 **데이터 단서**(가격·할인율 변화, 대표 사진 등록일=신상 여부, 같은 브랜드 동반 상승, 판매량 표시)와 예전 조사 기록
