@@ -37,10 +37,35 @@ jobs:
           fi
 
       - name: 기록과 리포트 저장(push)
+        id: save
         if: always()   # 도중에 멈춰도 받은 상세정보는 저장
         run: |
           git config user.name "musinsa-report-bot"
           git config user.email "actions@users.noreply.github.com"
+          D=$(TZ=Asia/Seoul date +%F)
+          BEFORE=$(git rev-parse HEAD)
           git add data docs
-          git commit -m "daily report $(TZ=Asia/Seoul date +%F)" || echo "변경 없음"
+          git commit -m "daily report $D" || echo "변경 없음"
           git push
+          # 이번 실행에서 오늘 일간 랭킹이 새로 저장됐으면 → 다음 단계에서 Claude 작업 시작
+          if git diff --name-only "$BEFORE" HEAD | grep -qx "data/history/$D.csv"; then
+            echo "fresh=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 수집이 끝나자마자 Claude 루틴(사진 판독 → 급상승 원인 조사 → 리포트 다시 만들기)을 시작 (2026-09-27 사장님: 10시까지 기다리지 말 것)
+      # 비밀값 2개(CLAUDE_ROUTINE_URL, CLAUDE_ROUTINE_TOKEN)는 claude.ai 루틴 편집 → API 트리거에서 받아 GitHub Secrets에 넣음
+      - name: Claude 사진 판독·원인 조사 시작
+        if: always() && steps.save.outputs.fresh == 'yes'   # 주간·월간 수집이 실패해도 일간이 저장됐으면 시작
+        env:
+          FIRE_URL: ${{ secrets.CLAUDE_ROUTINE_URL }}
+          FIRE_TOKEN: ${{ secrets.CLAUDE_ROUTINE_TOKEN }}
+        run: |
+          if [ -z "$FIRE_URL" ] || [ -z "$FIRE_TOKEN" ]; then
+            echo "루틴 주소·토큰이 아직 없음 → 건너뜀 (루틴의 예약 시간에 돌아감)"; exit 0
+          fi
+          curl -fsS -X POST "$FIRE_URL" \
+            -H "Authorization: Bearer $FIRE_TOKEN" \
+            -H "anthropic-beta: experimental-cc-routine-2026-04-01" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "Content-Type: application/json" \
+            -d '{}'
