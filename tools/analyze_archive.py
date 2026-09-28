@@ -53,6 +53,9 @@ def product_table(rows: list[dict]) -> dict:
             p["cat"] = r["category_code"]
     for pid, p in products.items():
         p["sub"] = subs[pid].most_common(1)[0][0] if subs[pid] else "기타"
+        # 디자인 키워드 (상품명 기준) — 시즌 추천 카드에서 세부 종류별로 모아 보여 줌
+        tags = {g: classify_attributes.keywords(p["name"], g) for g in KEYWORD_GROUPS}
+        p["tags"] = {g: v for g, v in tags.items() if v}
     return products
 
 
@@ -129,7 +132,7 @@ def keyword_trends(months: list[str], table: dict, gender: str, products: dict) 
     return {g: {k: v for k, v in d.items() if max(v) >= 5} for g, d in out.items()}
 
 
-def brand_trends(months: list[str], hist: dict, products: dict, limit: int = 25) -> list[dict]:
+def brand_trends(months: list[str], hist: dict, products: dict, limit: int = 80) -> list[dict]:
     per = defaultdict(lambda: [0] * len(months))
     for pid, ranks in hist.items():
         for mi, ym in enumerate(months):

@@ -90,6 +90,8 @@ def compact_products(products: dict, with_image_path: bool) -> dict:
         item = {"n": p["name"], "b": p["brand"], "c": p["cat"], "s": p["sub"]}
         if p.get("discontinued"):
             item["x"] = 1
+        if p.get("tags"):
+            item["k"] = p["tags"]
         if with_image_path and p["image"].startswith(IMAGE_HOST):
             item["i"] = small_url(p["image"])[len(IMAGE_HOST):]
         out[pid] = item

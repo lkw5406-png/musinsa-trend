@@ -178,6 +178,43 @@ table.heat td:hover{outline:2px solid var(--ink);outline-offset:0}
 .mini .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .mini .br{color:var(--muted);font-size:11.5px}
 
+/* season recommendations */
+.chips button small{color:inherit;opacity:.7;font-size:11.5px}
+.recs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.rec{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.rhead{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:start}
+.rk{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--accent);line-height:1.1}
+.rhead h3{font-size:17px}
+.rmeta{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.rmeta b{font-family:var(--mono);font-weight:500;color:var(--ink)}
+.tr{display:inline-block;font-size:11.5px;font-weight:700;margin-left:4px;color:var(--muted)}
+.tr.up{color:var(--up)} .tr.down{color:var(--re)}
+.tags{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:13px}
+.tags div{display:contents}
+.tags dt{color:var(--muted)} .tags dd{margin:0}
+.rprods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.rprods a{text-decoration:none;display:flex;flex-direction:column;gap:4px;min-width:0}
+.rprods .ph{width:100%;height:auto;aspect-ratio:5/6}
+.rb{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:400px){.recs{grid-template-columns:1fr}}
+/* bars (keyword & brand) */
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.bgroup{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.bgroup h3{font-size:15px;margin-bottom:4px}
+.br{display:grid;grid-template-columns:minmax(0,7.5em) minmax(60px,1fr) 3em 3.6em;align-items:center;gap:10px;font-size:13.5px}
+.br .bn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.br .bt{position:relative;height:12px;background:var(--surface-2);border-radius:3px}
+.br .bt i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:3px}
+.br .bt b{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink)}
+.br .bv{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.dl{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dl.up,.up-t{color:var(--up)} .dl.down,.down-t{color:var(--re)}
+.legend i.mk{width:2px;height:14px;background:var(--ink);border-radius:0}
+.bfoot{font-size:12px;color:var(--muted);margin:4px 0 0}
+.bgrid.two{grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
+.bgrid.two .br{grid-template-columns:minmax(0,10.5em) minmax(60px,1fr) 3em 3.6em}
+@media (max-width:420px){.bgrid{grid-template-columns:1fr}.br{grid-template-columns:minmax(0,6em) minmax(40px,1fr) 2.6em 3.2em;gap:6px}}
+
 /* keyword small multiples */
 .kw-group{display:flex;flex-direction:column;gap:10px}
 .kw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
@@ -290,6 +327,7 @@ document.addEventListener("click", e=>{
   const t = e.target.closest("[data-tab]"); if(t){ e.preventDefault(); go(t.dataset.tab); return; }
   const c = e.target.closest("[data-cat]"); if(c){ state.cat=c.dataset.cat; render(); return; }
   const sc = e.target.closest("[data-scat]"); if(sc){ state.scat=sc.dataset.scat; render(); return; }
+  const se = e.target.closest("[data-sea]"); if(se){ state.sea=se.dataset.sea; render(); return; }
   const mv = e.target.closest("[data-mstep]"); if(mv){ const i=M.indexOf(state.month)+(+mv.dataset.mstep); if(i>=0&&i<M.length){state.month=M[i]; render();} return; }
   const b = e.target.closest("[data-browse]"); if(b){ state.bcat=b.dataset.browse; go("browse"); return; }
   const gm = e.target.closest("[data-gomonth]"); if(gm){ state.month=gm.dataset.gomonth; go("month"); return; }
@@ -312,7 +350,6 @@ function render(){
   const app = document.getElementById("app");
   const v = {summary, steady, season, month, keyword, browse}[state.tab]();
   app.innerHTML = `<section class="view">${v}</section>`;
-  if(state.tab==="keyword") wireSpark();
 }
 
 function seasonLeaders(){
@@ -375,6 +412,72 @@ function steady(){
 
 const heatLegend = `<div class="legend">TOP 30 중 개수 <span><i style="background:var(--h0)"></i>0</span><span><i style="background:var(--h1)"></i>1–2</span><span><i style="background:var(--h2)"></i>3–4</span><span><i style="background:var(--h3)"></i>5–7</span><span><i style="background:var(--h4)"></i>8–11</span><span><i style="background:var(--h5)"></i>12–16</span><span><i style="background:var(--h6)"></i>17–30</span></div>`;
 
+
+/* ---------- 계절별 추천 아이템 (디자이너 참고용) ---------- */
+const TAG_NAMES = {fit:"핏", silhouette:"실루엣·기장", texture:"원단·가공", detail:"디테일", color:"컬러"};
+const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0;
+function nextSeason(){ const m = new Date().getMonth()+1; const order=["봄","여름","가을","겨울"]; return order[(order.indexOf(SEASON_OF(m))+1)%4]; }
+// 점수 = 가장 최근 그 계절 평균 자리 × 0.6 + 전체 기간 그 계절 평균 × 0.4. 한 대분류에서 최대 2개.
+function seasonRecs(seasonName){
+  const months = SEASONS.find(s=>s[0]===seasonName)[1];
+  const idx = M.map((ym,i)=>months.includes(+ym.slice(5))?i:-1).filter(i=>i>=0);
+  if(!idx.length) return [];
+  const recent = idx.slice(-3), before = idx.slice(-6,-3);
+  const cands = [];
+  topCats().forEach(([cat,catName])=>{
+    const comp = G().composition[cat]; if(!comp) return;
+    Object.entries(comp.by_month).forEach(([sub,counts])=>{
+      if(sub==="기타") return;
+      const all = mean(idx.map(i=>counts[i])), rec = mean(recent.map(i=>counts[i]));
+      const prev = before.length===3 ? mean(before.map(i=>counts[i])) : null;
+      const year = mean(counts);
+      if(all < 2) return;
+      cands.push({sub, cat, catName, all, rec, prev, year, score: rec*0.6 + all*0.4});
+    });
+  });
+  cands.sort((a,b)=>b.score-a.score);
+  // 대분류마다 1등 먼저(겨울 아우터처럼 세부 종류가 잘게 나뉜 대분류도 빠지지 않게), 남은 자리는 점수순(대분류당 최대 2개)
+  const out = [], perCat = {};
+  topCats().forEach(([cat])=>{ const c = cands.find(x=>x.cat===cat); if(c){ out.push(c); perCat[cat]=1; } });
+  for(const c of cands){ if(out.length>=5) break; if(out.includes(c) || (perCat[c.cat]||0) >= 2) continue; perCat[c.cat]=(perCat[c.cat]||0)+1; out.push(c); }
+  out.sort((a,b)=>b.score-a.score); out.length = Math.min(out.length, 5);
+  // 대표 상품과 디자인 키워드: 이 계절 달들의 대분류 TOP 30에서 그 종류 상품을 순위 가중치로 모음
+  out.forEach(c=>{
+    const w = {};
+    idx.forEach(i=>{ ((G().top[c.cat]||{})[M[i]]||[]).forEach((id,r)=>{ if(P(id).s===c.sub) w[id]=(w[id]||0)+(30-r) + (recent.includes(i)?15:0); }); });
+    const ids = Object.entries(w).sort((a,b)=>b[1]-a[1]).map(([id])=>id);
+    c.ids = ids.slice(0,4);
+    c.tags = {};
+    Object.keys(TAG_NAMES).forEach(g=>{
+      const cnt = {}; let tot = 0;
+      ids.forEach(id=>{ ((P(id).k||{})[g]||[]).forEach(v=>{ cnt[v]=(cnt[v]||0)+w[id]; }); tot += w[id]; });
+      const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v >= tot*0.12).slice(0,3).map(([k])=>k);
+      if(top.length) c.tags[g] = top;
+    });
+  });
+  return out;
+}
+function seasonRecBlock(){
+  const cur = state.sea || nextSeason();
+  const recs = seasonRecs(cur);
+  const months = SEASONS.find(s=>s[0]===cur)[1];
+  const picks = R.season_picks || {};
+  const note = (picks[state.g]||{})[cur] || (picks.A||{})[cur] || "";
+  return `
+  <div class="block">
+    <div><div class="eyebrow">디자이너 참고 · ${GEN[state.g]}</div><h2>계절별 추천 아이템 TOP 5</h2><p class="lede">그 계절(${months.join("·")}월)에 대분류 TOP 30을 가장 많이 채운 옷 종류입니다. 가장 최근 시즌에 비중을 더 두었고, 대분류(상의·아우터·바지·원피스/스커트)마다 최소 1개, 최대 2개를 골랐습니다. 키워드는 대표 상품 이름에서 뽑았습니다.</p></div>
+    <div class="chips">${SEASONS.map(([n,ms])=>`<button type="button" data-sea="${n}" aria-pressed="${cur===n}">${n} <small>${ms.join("·")}월</small>${n===nextSeason()?' <small>· 다음 시즌</small>':''}</button>`).join("")}</div>
+    ${note?`<div class="note">${esc(note)}</div>`:""}
+    ${recs.length?`<ol class="recs">${recs.map((c,k)=>{
+      const trend = c.prev==null ? "" : c.rec > c.prev+0.9 ? `<span class="tr up">작년보다 ▲</span>` : c.rec < c.prev-0.9 ? `<span class="tr down">작년보다 ▼</span>` : `<span class="tr">작년과 비슷</span>`;
+      return `<li class="rec">
+        <div class="rhead"><span class="rk">${k+1}</span><div><h3>${esc(c.sub)}</h3><div class="rmeta">${esc(c.catName)} · 이 계절 평균 <b>${c.all.toFixed(1)}</b>자리 / 30 · 평소 ${c.year.toFixed(1)}자리 ${trend}</div></div></div>
+        ${Object.keys(c.tags).length?`<dl class="tags">${Object.entries(c.tags).map(([g,v])=>`<div><dt>${TAG_NAMES[g]}</dt><dd>${v.map(esc).join(" · ")}</dd></div>`).join("")}</dl>`:""}
+        <div class="rprods">${c.ids.map(id=>{const q=P(id); return `<a href="${url(id)}" target="_blank" rel="noreferrer" title="${esc(q.b+' '+q.n)}">${photo(id)}<span class="rb">${esc(q.b)}</span></a>`;}).join("")}</div>
+      </li>`;}).join("")}</ol>`:`<p class="empty">이 계절 자료가 아직 없습니다.</p>`}
+  </div>`;
+}
+
 // 세부 종류마다: 매년 특정 달에 몰리는지(시즌템), 1년 내내 있는지
 function seasonProfile(cat){
   const comp = G().composition[cat]; const seasonal = [], always = [];
@@ -413,9 +516,9 @@ function season(){
       shown.map(([s,n])=>`<div class="sb ${seasonalSet.has(s)?"is-season":alwaysSet.has(s)?"is-always":""}"><span class="sl">${esc(s)}</span><span class="st"><i style="width:${(n/30*100).toFixed(0)}%"></i></span><span class="sn">${n}</span></div>`).join("")
     }</div>${rest.length?`<div class="more">그 외 ${rest.length}종 ${restN}개</div>`:""}</div></div>`;
   }).join("");
-  return `
+  return `${seasonRecBlock()}
   <div class="block">
-    <div><h2>시즌 캘린더</h2><p class="lede">대분류 TOP 30을 어떤 종류의 옷이 채웠는지 셌습니다. 위에는 매년 돌아오는 시즌템과 1년 내내 있는 옷을 요약했고, 아래에는 달마다 가장 많이 들어간 종류 4개를 적었습니다. 막대 길이는 30자리 중 몇 자리인지입니다.</p></div>
+    <div><h2>종류별 시즌 흐름</h2><p class="lede">대분류 TOP 30을 어떤 종류의 옷이 채웠는지 셌습니다. 위에는 매년 돌아오는 시즌템과 1년 내내 있는 옷을 요약했고, 아래에는 달마다 가장 많이 들어간 종류 4개를 적었습니다. 막대 길이는 30자리 중 몇 자리인지입니다.</p></div>
     <div class="chips">${cats.map(([k,v])=>`<button type="button" data-scat="${k}" aria-pressed="${cat===k}">${v}</button>`).join("")}</div>
     ${R.categories&&R.categories[cat]?`<div class="note">${esc(R.categories[cat])}</div>`:""}
     <div class="profile">
@@ -458,40 +561,46 @@ function month(){
   </div>`;
 }
 
-function sparkSVG(vals, key){
-  const W=200, H=46, n=vals.length, max=Math.max(...vals, 5);
-  const x = i => (i/(n-1))*W, y = v => H-2-(v/max)*(H-6);
-  const pts = vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-  const years = M.map((ym,i)=>ym.endsWith("-01")&&i>0?`<line class="yr" x1="${x(i)}" x2="${x(i)}" y1="0" y2="${H}"/>`:"").join("");
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" data-vals="${vals.join(",")}" data-key="${esc(key)}" role="img" aria-label="${esc(key)} 월별 비율">${years}<polygon class="ar" points="0,${H} ${pts} ${W},${H}"/><polyline class="ln" points="${pts}" vector-effect="non-scaling-stroke"/><line class="hv" x1="0" x2="0" y1="0" y2="${H}" vector-effect="non-scaling-stroke"/></svg>`;
-}
-function wireSpark(){
-  document.querySelectorAll(".kw svg").forEach(svg=>{
-    const vals = svg.dataset.vals.split(",").map(Number), hv = svg.querySelector(".hv");
-    svg.addEventListener("mousemove", e=>{ const r=svg.getBoundingClientRect(); const i=Math.max(0,Math.min(vals.length-1,Math.round((e.clientX-r.left)/r.width*(vals.length-1)))); const X=i/(vals.length-1)*200; hv.setAttribute("x1",X); hv.setAttribute("x2",X); hv.style.opacity=1; showTip(`${esc(ymLabel(M[i]))}<br>${esc(svg.dataset.key)} <b>${vals[i]}%</b>`, e.clientX, e.clientY); });
-    svg.addEventListener("mouseleave", ()=>{ hv.style.opacity=0; tip.hidden=true; });
-  });
+// 막대 한 줄: 이름 | 막대(+ 비교 세로선) | 값 | 변화
+function barRow(name, val, max, unit, cmp, tip){
+  const w = max>0 ? Math.max(1.5, val/max*100) : 0, cw = cmp==null||max<=0 ? null : Math.min(100, cmp/max*100);
+  const d = cmp==null ? null : val-cmp;
+  const dTxt = d==null ? "<span></span>" : Math.abs(d) < 0.5 ? `<span class="dl">–</span>` : `<span class="dl ${d>0?"up":"down"}">${d>0?"▲":"▼"}${Math.abs(d).toFixed(0)}${unit==="%"?"%p":""}</span>`;
+  return `<div class="br" data-tip="${esc(tip)}"><span class="bn">${esc(name)}</span><span class="bt"><i style="width:${w.toFixed(1)}%"></i>${cw!=null?`<b style="left:${cw.toFixed(1)}%" aria-hidden="true"></b>`:""}</span><span class="bv">${unit==="%"?val.toFixed(0)+"%":val}</span>${dTxt}</div>`;
 }
 function keyword(){
   const K = G().keywords, NAMES = {fit:"핏", silhouette:"실루엣·기장", texture:"원단·가공", detail:"디테일", color:"컬러"};
-  const recent = v => v.slice(-3).reduce((a,b)=>a+b,0)/3;
+  const n = M.length, last = [n-3,n-2,n-1].filter(i=>i>=0);
+  const yoy = n >= 15;                       // 1년 전 같은 달과 비교 가능한지
+  const base = yoy ? last.map(i=>i-12) : last.map(i=>i-3).filter(i=>i>=0);
+  const cmpName = yoy ? "1년 전 같은 3개월" : "직전 3개월";
+  const range = `${ymShort(M[last[0]])}~${ymShort(M[n-1])}`;
   const groups = Object.entries(NAMES).map(([g,name])=>{
-    const items = Object.entries(K[g]||{}).sort((a,b)=>recent(b[1])-recent(a[1])).slice(0,12);
-    if(!items.length) return "";
-    return `<div class="kw-group"><h3>${name}</h3><div class="kw-grid">${items.map(([k,v])=>{const pk=v.indexOf(Math.max(...v)); return `<div class="kw"><div class="kw-head"><b>${esc(k)}</b><span>최근 ${recent(v).toFixed(0)}% · 최고 ${ymShort(M[pk])}</span></div>${sparkSVG(v,k)}<div class="kw-foot"><span>${ymShort(M[0])}</span><span>${ymShort(M[M.length-1])}</span></div></div>`;}).join("")}</div></div>`;
+    const rows = Object.entries(K[g]||{}).map(([k,v])=>({k, now: mean(last.map(i=>v[i])), was: base.length ? mean(base.map(i=>v[i])) : null, peak: v.indexOf(Math.max(...v))}))
+      .filter(r=>r.now>=2 || (r.was||0)>=2).sort((a,b)=>b.now-a.now).slice(0,10);
+    if(!rows.length) return "";
+    const max = Math.max(...rows.map(r=>Math.max(r.now, r.was||0)));
+    return `<div class="bgroup"><h3>${name}</h3>${rows.map(r=>barRow(r.k, r.now, max, "%", r.was, `${r.k}: 최근 ${r.now.toFixed(1)}% · ${cmpName} ${r.was==null?"-":r.was.toFixed(1)+"%"} · 가장 많았던 달 ${ymLabel(M[r.peak])}`)).join("")}</div>`;
   }).join("");
   const B = G().brands;
-  const cols = M.map((ym,i)=>({ym, gap:i>0&&ym.endsWith("-01")}));
-  const brandHeat = `<div class="heat-scroll"><table class="heat"><thead><tr><th></th>${cols.map(c=>`${c.gap?'<th></th>':''}<th class="y">${c.ym.endsWith("-01")||c.ym===M[0]?c.ym.slice(0,4):""}</th>`).join("")}<th>합계</th></tr><tr><th></th>${cols.map(c=>`${c.gap?'<th></th>':''}<th>${+c.ym.slice(5)}</th>`).join("")}<th></th></tr></thead><tbody>${B.map(b=>`<tr><th class="row">${esc(b.brand)}</th>${cols.map((c,i)=>`${c.gap?'<td class="gap"></td>':''}<td data-l="${level(b.counts[i])}" style="background:var(--h${level(b.counts[i])})" data-tip="${esc(ymLabel(c.ym))}<br>${esc(b.brand)} · 대분류 TOP 30 합계 중 <b>${b.counts[i]}</b>개">${b.counts[i]||""}</td>`).join("")}<th style="font-family:var(--mono);padding-left:8px;color:var(--ink)">${b.total}</th></tr>`).join("")}</tbody></table></div>`;
+  const sum = (a, ids) => ids.reduce((x,i)=>x+(a[i]||0),0);
+  const r6 = [0,1,2,3,4,5].map(k=>n-6+k).filter(i=>i>=0), p6 = [0,1,2,3,4,5].map(k=>n-12+k).filter(i=>i>=0);
+  const totals = [...B].sort((a,b)=>b.total-a.total).slice(0,15);
+  const maxT = Math.max(1, ...totals.map(b=>b.total));
+  const rising = n>=12 ? B.map(b=>({b, now: sum(b.counts, r6), was: sum(b.counts, p6)})).filter(x=>x.now>=4 && x.now > x.was).sort((a,b)=>(b.now-b.was)-(a.now-a.was)).slice(0,10) : [];
+  const maxR = Math.max(1, ...rising.map(x=>Math.max(x.now,x.was)));
   return `
   <div class="block">
-    <div><h2>상품명 키워드 흐름</h2><p class="lede">대분류 TOP 30(남성은 3개, 전체·여성은 4개)의 상품명에 그 말이 들어간 비율입니다. 상품명에 적힌 것만 세기 때문에 실제보다 낮게 나올 수 있고, 방향을 보는 용도입니다. 최근 3개월 비율이 높은 순서입니다. 세로 선은 해가 바뀌는 지점입니다.</p>${R.keywords_note?`<div class="note">${esc(R.keywords_note)}</div>`:""}</div>
-    ${groups}
+    <div><h2>디자인 키워드: 요즘 얼마나 쓰이나</h2><p class="lede">대분류 TOP 30 상품 이름에 그 말이 들어간 비율입니다. 막대는 최근 3개월(${range}), 세로 선은 ${cmpName}이고, 오른쪽 숫자는 그 차이입니다. 상품명에 적힌 것만 세기 때문에 실제보다 낮게 나올 수 있어서, 방향을 보는 용도로 쓰세요.</p>${R.keywords_note?`<div class="note">${esc(R.keywords_note)}</div>`:""}</div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>최근 3개월</span><span><i class="mk"></i>${cmpName}</span><span><b class="up-t">▲</b> 늘어남</span><span><b class="down-t">▼</b> 줄어듦</span></div>
+    <div class="bgrid">${groups}</div>
   </div>
   <div class="block">
-    <div><h2>브랜드: 달마다 TOP 30에 올린 상품 수</h2><p class="lede">${M.length}개월 동안 대분류 TOP 30에 가장 많이 오른 브랜드 ${B.length}곳입니다.</p>${R.brands_note?`<div class="note">${esc(R.brands_note)}</div>`:""}</div>
-    ${heatLegend.replace("TOP 30 중 개수","상품 수")}
-    <div class="heat-card">${brandHeat}</div>
+    <div><h2>브랜드</h2><p class="lede">대분류 TOP 30에 상품을 몇 자리 올렸는지 셌습니다(한 상품이 여러 달 들면 달마다 셈).</p>${R.brands_note?`<div class="note">${esc(R.brands_note)}</div>`:""}</div>
+    <div class="bgrid two">
+      <div class="bgroup"><h3>${M.length}개월 누적 TOP 15</h3>${totals.map(b=>barRow(b.brand, b.total, maxT, "", null, `${b.brand}: ${M.length}개월 합계 ${b.total}자리`)).join("")}</div>
+      <div class="bgroup"><h3>최근 6개월 뜨는 브랜드</h3>${rising.length?rising.map(x=>barRow(x.b.brand, x.now, maxR, "", x.was, `${x.b.brand}: 최근 6개월 ${x.now}자리 · 그 전 6개월 ${x.was}자리`)).join(""):`<p class="empty">비교할 기간이 부족합니다.</p>`}<p class="bfoot">막대 = 최근 6개월, 세로 선 = 그 전 6개월</p></div>
+    </div>
   </div>`;
 }
 
