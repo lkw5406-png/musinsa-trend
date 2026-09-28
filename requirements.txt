@@ -1,1 +1,3 @@
 # 현재 Tool들은 파이썬 기본 기능만 사용 — 추가 설치 없음 (Python 3.10 이상)
+# 예외: build_archive_report.py(월간 아카이브 페이지)는 사진을 작게 줄이려고 Pillow를 씀. 없으면 큰 사진 그대로 넣음
+# Pillow
