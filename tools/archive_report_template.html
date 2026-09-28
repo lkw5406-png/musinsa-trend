@@ -139,6 +139,7 @@ table.heat td:hover{outline:2px solid var(--ink);outline-offset:0}
 .slist{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:4px 18px 10px}
 .slist h3.yr{font-size:15px;padding:14px 0 4px;font-family:var(--mono);font-weight:500}
 .srow{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;padding:10px 0;border-top:1px solid var(--hair)}
+.slist .srow:first-child{border-top:0}
 .sm{display:flex;flex-direction:column;line-height:1.25}
 .sm b{font-size:15px} .sm span{font-size:12px;color:var(--muted)}
 .sbody{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -330,6 +331,7 @@ document.addEventListener("click", e=>{
   const sc = e.target.closest("[data-scat]"); if(sc){ state.scat=sc.dataset.scat; render(); return; }
   const se = e.target.closest("[data-sea]"); if(se){ state.sea=se.dataset.sea; render(); return; }
   const sy = e.target.closest("[data-sy]"); if(sy){ state.sy=sy.dataset.sy; render(); return; }
+  const sly = e.target.closest("[data-sly]"); if(sly){ state.sly=sly.dataset.sly; render(); return; }
   const mv = e.target.closest("[data-mstep]"); if(mv){ const i=M.indexOf(state.month)+(+mv.dataset.mstep); if(i>=0&&i<M.length){state.month=M[i]; render();} return; }
   const b = e.target.closest("[data-browse]"); if(b){ state.bcat=b.dataset.browse; go("browse"); return; }
   const gm = e.target.closest("[data-gomonth]"); if(gm){ state.month=gm.dataset.gomonth; go("month"); return; }
@@ -522,11 +524,14 @@ function season(){
   const cat = state.scat, comp = G().composition[cat] || {by_month:{}};
   const {seasonal, always} = seasonProfile(cat);
   const seasonalSet = new Set(seasonal.map(x=>x.sub)), alwaysSet = new Set(always.map(x=>x.sub));
+  const listYears = [...new Set(M.map(ym=>ym.slice(0,4)))];
+  const ly = listYears.includes(state.sly) ? state.sly : listYears[listYears.length-1];
   const rows = M.map((ym,i)=>{
+    if(!ym.startsWith(ly)) return "";
     const items = Object.entries(comp.by_month).map(([s,c])=>[s,c[i]]).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]);
     const shown = items.slice(0,4), rest = items.slice(4), restN = rest.reduce((a,[,n])=>a+n,0);
     const m = +ym.slice(5);
-    const year = (i===0 || ym.endsWith("-01")) ? `<h3 class="yr">${ym.slice(0,4)}년</h3>` : "";
+    const year = "";
     return `${year}<div class="srow"><div class="sm"><b>${m}월</b><span>${SEASON_OF(m)}</span></div><div class="sbody"><div class="sbars">${
       shown.map(([s,n])=>`<div class="sb ${seasonalSet.has(s)?"is-season":alwaysSet.has(s)?"is-always":""}"><span class="sl">${esc(s)}</span><span class="strack"><i style="width:${(n/30*100).toFixed(0)}%"></i></span><span class="sn">${n}</span></div>`).join("")
     }</div>${rest.length?`<div class="more">그 외 ${rest.length}종 ${restN}개</div>`:""}</div></div>`;
@@ -543,6 +548,7 @@ function season(){
   </div>
   <div class="block">
     <div class="legend"><span><i style="background:var(--accent)"></i>시즌템</span><span><i style="background:var(--muted)"></i>1년 내내 있는 옷</span><span><i style="background:var(--axis)"></i>그 밖</span></div>
+    <div class="chips" aria-label="달별 목록 연도">${listYears.map(y=>`<button type="button" data-sly="${y}" aria-pressed="${ly===y}">${y}년</button>`).join("")}</div>
     <div class="slist">${rows}</div>
   </div>`;
 }
