@@ -238,7 +238,11 @@ def main() -> int:
     ap.add_argument("mode", choices=list(MODES))
     ap.add_argument("args", nargs="+")
     ap.add_argument("--recent", action="store_true")
-    a = ap.parse_args()
+    # '-'로 시작하는 영상 ID(예: -m01BbhrCoY)를 옵션으로 오해하지 않게 '--recent' 밖의 인자는 '--' 뒤로 보냄
+    argv = sys.argv[1:]
+    recent = [x for x in argv if x == "--recent"]
+    rest = [x for x in argv if x not in ("--recent", "--")]
+    a = ap.parse_args(recent + ["--"] + rest if rest and rest[0] not in ("-h", "--help") else argv)
     sys.stdout.reconfigure(encoding="utf-8")
     load_env()
     by_api, by_html = MODES[a.mode]
