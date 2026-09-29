@@ -505,6 +505,7 @@ function seasonRecBlock(){
 
 
 /* ---------- 카테고리별 옷 종류 분석 (무신사 랭킹 데이터만: 대분류 TOP 30 + 세부 카테고리 TOP 30) ---------- */
+const REC_TOP = 10, REC_PER_TYPE = 3;   // 추천 옷 종류·추천 상품 개수, 한 종류에서 최대 몇 개
 const TYPE_GROUPS = ["silhouette","fit","texture","detail"];   // 옷 종류+디자인 조합에 쓰는 특징 (컬러는 보조 정보로만)
 const won = v => v==null ? "-" : v.toLocaleString("ko-KR")+"원";
 const manwon = v => (Math.round(v/1000)/10).toString().replace(/\.0$/,"")+"만";
@@ -559,10 +560,10 @@ function catTypeData(cat, seasonName, year){
       const prev = t.sharesPrev ? ((t.sharesPrev[g]||{})[tag]||0) : null;
       cands.push({g, tag, share, prev, est: t.avg*share});
     }));
-    cands.sort((a,b)=>b.est-a.est).slice(0,2).forEach(c=>combos.push({...c, t}));
+    cands.sort((a,b)=>b.est-a.est).slice(0,REC_PER_TYPE).forEach(c=>combos.push({...c, t}));
   });
   combos.sort((a,b)=>b.est-a.est);
-  const comboPicks = combos.slice(0,5).map(c=>{
+  const comboPicks = combos.slice(0,REC_TOP).map(c=>{
     const ids = c.t.ids.filter(id=>((P(id).k||{})[c.g]||[]).includes(c.tag));
     const other = {}; ["silhouette","fit","texture","detail","color"].filter(g=>g!==c.g).forEach(g=>{
       const cnt={}; let tot=0; ids.forEach(id=>{ ((P(id).k||{})[g]||[]).forEach(v=>{ cnt[v]=(cnt[v]||0)+c.t.w[id]; }); tot+=c.t.w[id]; });
@@ -571,11 +572,11 @@ function catTypeData(cat, seasonName, year){
     });
     return {...c, name: `${c.tag.replace(/ 기장$/,"")} ${c.t.sub}`, ids: ids.slice(0,4), prices: ids.map(id=>P(id).p).filter(Boolean), other};
   });
-  // ② 개별 상품: 이 기간 대분류 TOP 30 순위 가중치 합, 판매 종료 제외, 한 종류에서 최대 2개
+  // ② 개별 상품: 이 기간 대분류 TOP 30 순위 가중치 합, 판매 종료 제외, 한 종류에서 최대 REC_PER_TYPE개
   const wCat = listWeights(cat, idx), perSub = {}, prodPicks = [];
   Object.keys(wCat).sort((a,b)=>wCat[b]-wCat[a]).forEach(id=>{
-    const q = P(id); if(q.x || prodPicks.length>=5) return;
-    if((perSub[q.s]||0) >= 2) return; perSub[q.s]=(perSub[q.s]||0)+1;
+    const q = P(id); if(q.x || prodPicks.length>=REC_TOP) return;
+    if((perSub[q.s]||0) >= REC_PER_TYPE) return; perSub[q.s]=(perSub[q.s]||0)+1;
     let months = 0, best = 99; idx.forEach(i=>{ const r=(((G().top[cat]||{})[M[i]])||[]).indexOf(id); if(r>=0){ months++; best=Math.min(best,r+1); } });
     prodPicks.push({id, months, best, total: idx.length});
   });
@@ -605,13 +606,13 @@ function catTypeBlock(){
       </div>`).join("")}
       <p class="bfoot">막대 = 이 기간 평균 자리(30자리 중)${d.fullBefore?`, 세로 선 = ${cmpWord}`:""}. 정가 범위는 그 종류 세부 TOP 30 상품의 가운데 50%. 특징·브랜드는 세부 TOP 30에서 순위가 높을수록 크게 셈.</p>
     </div>
-    <div><h3 class="cz-h">추천 옷 종류 5 — 종류 + 디자인 특징</h3><p class="bfoot">종류가 대분류 TOP 30에서 차지한 자리 × 그 종류 세부 TOP 30에서 그 특징을 가진 상품 비율(순위 가중)로 점수를 매겼습니다. 한 종류에서 최대 2개.</p></div>
+    <div><h3 class="cz-h">추천 옷 종류 TOP 10 — 종류 + 디자인 특징</h3><p class="bfoot">종류가 대분류 TOP 30에서 차지한 자리 × 그 종류 세부 TOP 30에서 그 특징을 가진 상품 비율(순위 가중)로 점수를 매겼습니다. 한 종류에서 최대 ${REC_PER_TYPE}개.</p></div>
     ${d.comboPicks.length?`<ol class="recs">${d.comboPicks.map((c,k)=>`<li class="rec">
       <div class="rhead"><span class="rk">${k+1}</span><div><h3>${esc(c.name)}</h3><div class="rmeta">${esc(c.t.sub)} 세부 TOP 30의 <b>${Math.round(c.share*100)}%</b>가 '${esc(c.tag)}' · 종류 평균 ${c.t.avg.toFixed(1)}자리 ${tr(c.share, c.prev, "%p")}</div></div></div>
       <dl class="tags">${c.prices.length?`<div><dt>정가</dt><dd>중간 ${won(median(c.prices))}</dd></div>`:""}${Object.entries(c.other).map(([g,v])=>`<div><dt>${TAG_NAMES[g]}</dt><dd>${v.map(esc).join(" · ")}</dd></div>`).join("")}</dl>
       <div class="rprods">${c.ids.map(id=>{const q=P(id); return `<a href="${url(id)}" target="_blank" rel="noreferrer" title="${esc(q.b+' '+q.n)}">${photo(id)}<span class="rb">${esc(q.b)}</span></a>`;}).join("")}</div>
     </li>`).join("")}</ol>`:`<p class="empty">뚜렷한 조합이 없습니다.</p>`}
-    <div><h3 class="cz-h">추천 상품 5 — 이 기간 ${catName} TOP 30 성적순</h3><p class="bfoot">이 기간 대분류 TOP 30 순위를 점수로 더했습니다(1위 30점 … 30위 1점). 판매 종료 상품은 빼고, 한 종류에서 최대 2개.</p></div>
+    <div><h3 class="cz-h">추천 상품 TOP 10 — 이 기간 ${catName} TOP 30 성적순</h3><p class="bfoot">이 기간 대분류 TOP 30 순위를 점수로 더했습니다(1위 30점 … 30위 1점). 판매 종료 상품은 빼고, 한 종류에서 최대 ${REC_PER_TYPE}개.</p></div>
     <ol class="cz-prods">${d.prodPicks.map((x,k)=>{const q=P(x.id); const kw=Object.entries(q.k||{}).flatMap(([,v])=>v).slice(0,4); return `<li><a href="${url(x.id)}" target="_blank" rel="noreferrer">${photo(x.id)}</a>
       <div class="cz-pinfo"><span class="cz-rk">${k+1}</span><span class="pbrand">${esc(q.b)} · ${esc(q.s)}</span><a class="pname" href="${url(x.id)}" target="_blank" rel="noreferrer">${esc(q.n)}</a>
       <span class="cz-pmeta">${x.months}/${x.total}개월 TOP 30 · 최고 ${x.best}위${q.p?` · 정가 ${won(q.p)}`:""}</span>${kw.length?`<span class="cz-kw">${kw.map(esc).join(" · ")}</span>`:""}</div></li>`;}).join("")}</ol>`}
