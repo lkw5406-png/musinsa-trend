@@ -33,7 +33,7 @@
 | 2. 빠진 상세정보 채우기 | `tools/product_details.py` | `data/product_details.json` (상품별 누적 저장소) |
 | 2-2. 후기 요약 (카테고리별 인기 TOP 50, 7일에 한 번, 하루 최대 120개) | `tools/review_summary.py` | `data/review_summaries.json` |
 | 3. 분석 | `tools/analyze_trends.py --period` (분류: `tools/classify_attributes.py` + `tools/attribute_keywords.json`) | `.tmp/analysis_YYYY-MM-DD.json` (주간·월간은 `analysis_weekly_…`) |
-| 3-2. 순위 급상승 원인 (Claude 조사, 수집 직후 자동 · 예비 13시 루틴) | `tools/rise_reasons.py` + `tools/web_research.py` | `data/rise_reasons.json` (키 = `기간:날짜` → 상품번호) |
+| 3-2. 순위 급상승 원인 (Claude 조사, 수집 직후 자동 · 예비 9시 루틴) | `tools/rise_reasons.py` + `tools/web_research.py` | `data/rise_reasons.json` (키 = `기간:날짜` → 상품번호) |
 | 4. 리포트 | `tools/build_report.py --period` | `docs/`(일간), `docs/weekly/`, `docs/monthly/` 각각 `index.html`(최신)·`reports/날짜.html`·`dates.json` |
 
 - 상품 상세정보·사진 판독·후기 요약은 상품 단위라 세 기간이 같이 씀 (같은 상품을 두 번 받지 않음).
@@ -49,7 +49,7 @@
 디자인 참고 아이템 카드에 들어가는 상품 중 상품명·설명·사이즈표로 못 채운 칸(원단·핏·소재·컬러·디테일, 팬츠류 실루엣)과
 **대분류별 핏·실루엣·디테일·컬러**(아우터·상의·하의 전부, 작은 아이템 종류 포함, 실루엣은 상의·아우터도)를 **Claude가 대표 사진을 보고** 채움.
 이미 판독한 **칸**은 다시 안 봄 → 매일 **새로 들어온 상품·새로 필요해진 칸만** (2026-09-27부터 상품 단위가 아니라 칸 단위).
-- **자동**: Claude 예약 실행(루틴) 매일 KST 10:00 (06시 GitHub 수집·리포트가 끝난 뒤). 관리: https://claude.ai/code/routines
+- **자동**: Claude 예약 실행(루틴) 수집 직후 자동 + 예비 매일 KST 09:07 (06시 GitHub 수집·리포트가 끝난 뒤). 관리: https://claude.ai/code/routines
 - 순서:
   1. `git pull --rebase`
   2. `python tools/photo_queue.py --check` → 오늘 남은 개수
@@ -66,7 +66,7 @@
 ## 순위 급상승 원인 조사 (매일, 2026-09-27 사장님 지시)
 '시장 동향'의 '순위가 크게 오른 상품'(성별마다 최대 10개, 하루 약 20개)마다 **왜 올랐는지, 유입이 어디서 왔는지**를
 웹·유튜브·SNS·커뮤니티로 깊게 조사해 적는다. 인기 브랜드 신상품이 원인이면 그렇게 적어도 됨. 유료 API 없이 Claude가 직접.
-- **자동**: 사진 판독과 같은 루틴에서 이어서 (사진 판독 → 원인 조사 → 리포트 다시 만들기 → 푸시). 2026-09-27 사장님 지시로 10시까지 기다리지 않고 **수집이 끝나자마자** 시작: `daily.yml` 마지막 단계가 오늘 일간 랭킹을 새로 저장한 실행에서만 루틴 API 트리거를 부름(GitHub Secrets `CLAUDE_ROUTINE_URL`·`CLAUDE_ROUTINE_TOKEN`, claude.ai 루틴 편집 → API 트리거에서 발급). 비밀값이 없거나 부르기가 실패하면 루틴의 예비 예약(매일 13:07 KST)에 돎 — 이미 끝난 날은 금방 끝나고, 한 번에 150개 제한으로 남은 사진은 이때 마저 처리
+- **자동**: 사진 판독과 같은 루틴에서 이어서 (사진 판독 → 원인 조사 → 리포트 다시 만들기 → 푸시). 2026-09-27 사장님 지시로 10시까지 기다리지 않고 **수집이 끝나자마자** 시작: `daily.yml` 마지막 단계가 오늘 일간 랭킹을 새로 저장한 실행에서만 루틴 API 트리거를 부름(GitHub Secrets `CLAUDE_ROUTINE_URL`·`CLAUDE_ROUTINE_TOKEN`, claude.ai 루틴 편집 → API 트리거에서 발급). 비밀값이 없거나 부르기가 실패하면 루틴의 예비 예약(매일 09:07 KST, 2026-09-29 사장님 지시로 13:07에서 당김)에 돎 — 이미 끝난 날은 금방 끝나고, 한 번에 150개 제한으로 남은 사진은 이때 마저 처리
 - 순서:
   1. `python tools/rise_reasons.py --check` → 오늘 리포트 기간별 조사할 개수 (일간 매일, 주간 월요일, 월간 1일)
   2. `python tools/rise_reasons.py --next --period daily` → `.tmp/rise_queue.json` + 화면에 상품별 **데이터 단서**(가격·할인율 변화, 대표 사진 등록일=신상 여부, 같은 브랜드 동반 상승, 판매량 표시)와 예전 조사 기록
@@ -190,3 +190,4 @@
 - 2026-09-27(10시 루틴): 클라우드에서 유튜브 **영상 페이지는 429(요청 과다)로 막히고 검색 결과 페이지는 열림**(WebFetch로도 설명란 안 보임, 채널 피드는 404). → `web_research.py search`가 검색 결과의 '설명란 발췌'(설명 앞부분)도 보여주게 고침. 발췌에 상품이 안 나오면 영상 설명 확인은 못 한 걸로 처리하고 보고에 적음.
 - 2026-09-27: `web_research.py`가 브라우저인 척하는 이름표를 쓰고 쉬지 않고 연달아 요청하고 있었음(수집 원칙 위반 → 유튜브 429의 한 원인). 정직한 이름표(`common.USER_AGENT`) + 요청 사이 3초(여러 번 실행해도 `.tmp/web_research.last`로 지킴)로 고침. 막히면 위장해서 뚫지 말 것 — 유튜브 공식 API(무료)로 옮기는 중.
 - 2026-09-27: `web_research.py`를 **유튜브 공식 API**(YouTube Data API v3, 무료 하루 10,000)로 바꿈. 설명란 전체 + 채널 주인 댓글(고정 댓글의 상품 목록·큐레이터 링크)까지 읽음. 키: PC는 `~/.secrets/musinsa-trend.env`의 `YOUTUBE_API_KEY`, 클라우드는 환경 Default의 **API 자격 증명**(호스트 `www.googleapis.com`, 헤더 `X-Goog-Api-Key`, 접두사 없음 — 세션은 키를 못 봄). 사용량: 검색 1번 = 100(하루 약 100번), 영상·채널·댓글 = 1. 키가 없거나 사용량을 다 쓰면 자동으로 웹페이지 읽기(3초 간격)로 대신하고 그 사실을 출력함 → 보고에 적을 것. 고정 댓글의 무신사 큐레이터 링크(www.musinsa.com)는 열지 않음(수집 원칙).
+- 2026-09-29: **원인 조사가 수집 직후 자동으로 안 돌던 이유** — `daily.yml` 마지막 단계(루틴 시작)가 9/28·9/29 둘 다 `curl exit 3`(주소 형식 오류)로 실패. GitHub Secrets `CLAUDE_ROUTINE_URL`에 주소 말고 공백·줄바꿈·따옴표·curl 명령 전체 같은 게 섞여 들어간 것(주소 번호·토큰이 틀리면 exit 22/6이 나옴). 요청이 출발도 못 해서 루틴 실행 기록엔 API 실행이 0번, 전부 13:08 예비 예약으로만 돎 → 오전엔 '시장 동향' 원인이 비어 있었음. 그리고 이 단계가 실패하면 수집이 멀쩡해도 06시 실행 전체가 '실패'로 표시되고 실패 메일이 감. 해결: 비밀값에서 주소(`https://api.anthropic.com/v1/claude_code/routines/trig_…/fire`)·토큰(`sk-ant-…`)만 골라 쓰게 고치고, 실패하면 이유(주소 못 찾음 / HTTP 401 토큰 틀림 등)를 한국어로 출력. 확인 방법: 루틴 실행 목록(RemoteTrigger `list_runs`)에 06시 반쯤 시작한 실행이 있으면 성공. GitHub 실행 기록은 공개 주소 `api.github.com/repos/lkw5406-png/musinsa-trend/actions/runs/…/jobs`(단계별 성공·실패)와 `check-runs/…/annotations`(exit 번호)로 PC에 gh 없이도 볼 수 있음. 같은 날 사장님 지시로 예비 예약을 13:07 → 09:07 KST로 당김.

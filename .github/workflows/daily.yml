@@ -63,9 +63,25 @@ jobs:
           if [ -z "$FIRE_URL" ] || [ -z "$FIRE_TOKEN" ]; then
             echo "루틴 주소·토큰이 아직 없음 → 건너뜀 (루틴의 예약 시간에 돌아감)"; exit 0
           fi
-          curl -fsS -X POST "$FIRE_URL" \
-            -H "Authorization: Bearer $FIRE_TOKEN" \
+          # 비밀값에 붙여넣기 때 섞인 공백·줄바꿈·따옴표·curl 명령 전체 등은 버리고 주소·토큰만 골라냄
+          # (2026-09-28·29: 주소 비밀값 형식 문제로 curl exit 3 → 이틀 다 13시 예비 예약에만 돎)
+          URL=$(printf '%s' "$FIRE_URL" | grep -oE 'https://api\.anthropic\.com/v1/claude_code/routines/trig_[A-Za-z0-9]+/fire' | head -1)
+          TOKEN=$(printf '%s' "$FIRE_TOKEN" | grep -oE 'sk-ant-[A-Za-z0-9_-]+' | head -1)
+          [ -n "$TOKEN" ] && echo "::add-mask::$TOKEN"
+          if [ -z "$URL" ]; then
+            echo "::error::CLAUDE_ROUTINE_URL 비밀값에서 루틴 주소(https://api.anthropic.com/v1/claude_code/routines/trig_…/fire)를 못 찾음 → 다시 넣어 주세요"; exit 1
+          fi
+          if [ -z "$TOKEN" ]; then
+            echo "::error::CLAUDE_ROUTINE_TOKEN 비밀값에서 토큰(sk-ant-…)을 못 찾음 → 다시 넣어 주세요"; exit 1
+          fi
+          CODE=$(curl -sS -o fire.json -w '%{http_code}' -X POST "$URL" \
+            -H "Authorization: Bearer $TOKEN" \
             -H "anthropic-beta: experimental-cc-routine-2026-04-01" \
             -H "anthropic-version: 2023-06-01" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}') || { echo "::error::루틴 주소에 연결 못 함"; exit 1; }
+          if [ "$CODE" != "200" ] && [ "$CODE" != "201" ]; then
+            echo "::error::루틴 시작 거절 (HTTP $CODE, 401 = 토큰 틀림·만료 → 루틴 편집에서 토큰 다시 발급) — 9시 예비 예약에 돎"
+            cat fire.json; echo; exit 1
+          fi
+          echo "루틴 시작됨:"; cat fire.json; echo; rm -f fire.json
