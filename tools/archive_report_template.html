@@ -239,6 +239,7 @@ table.heat td:hover{outline:2px solid var(--ink);outline-offset:0}
 .rrow .r{font-family:var(--mono);font-weight:500;text-align:right}
 .rrow .ph{width:44px;height:52px}
 .rrow .st{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rprice{font-family:var(--mono);font-size:12px;color:var(--ink-2);margin-left:8px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .st.new{color:var(--new);font-weight:700} .st.re{color:var(--re);font-weight:700} .st.up{color:var(--up)}
 
 .tip{position:fixed;z-index:50;pointer-events:none;background:var(--tip-bg);color:var(--tip-ink);font-size:12.5px;line-height:1.45;padding:7px 10px;border-radius:6px;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,.18)}
@@ -616,14 +617,14 @@ function browse(){
   const opts = topCats().map(([code,name])=>`<optgroup label="${name}"><option value="${code}" ${state.bcat===code?"selected":""}>${name} 전체</option>${Object.entries(cats).filter(([,c])=>c.parent===code).map(([sc,c])=>`<option value="${sc}" ${state.bcat===sc?"selected":""}>${esc(c.name)}</option>`).join("")}</optgroup>`).join("");
   return `
   <div class="block">
-    <div><h2>순위 찾아보기</h2><p class="lede">달·카테고리를 골라 무신사 월간 TOP 30 전체를 봅니다. 세부 카테고리(니트, 패딩, 데님 팬츠 등)도 고를 수 있습니다.</p></div>
+    <div><h2>순위 찾아보기</h2><p class="lede">달·카테고리를 골라 무신사 월간 TOP 30 전체를 봅니다. 세부 카테고리(니트, 패딩, 데님 팬츠 등)도 고를 수 있습니다.</p>${(D.price_dates||[]).length?`<p class="bfoot">정가: ${D.price_dates[1].slice(0,4)}년 ${+D.price_dates[1].slice(5,7)}월 무신사 상품 페이지 조회 기준(그 달 당시 가격이 아님). 아직 받지 못한 상품은 비어 있습니다.</p>`:""}</div>
     <div class="filters">
       <select id="byear" aria-label="연도">${[...new Set(M.map(m=>m.slice(0,4)))].map(y=>`<option value="${y}" ${ym.startsWith(y)?"selected":""}>${y}년</option>`).join("")}</select>
       <select id="bmonth" aria-label="달">${M.filter(m=>m.slice(0,4)===ym.slice(0,4)).map(m=>`<option value="${m}" ${m===ym?"selected":""}>${+m.slice(5)}월</option>`).join("")}</select>
       <select id="bcat" aria-label="카테고리">${opts}</select>
       <button type="button" data-gomonth="${ym}" style="font:inherit;font-size:13px;border:0;background:none;color:var(--accent);cursor:pointer">이 달 배경 보기 ›</button>
     </div>
-    ${ids.length?`<div class="rank-table">${ids.map((id,k)=>{const q=P(id); let st="", cls=""; if(prevIds){ const pi=prevIds.indexOf(id); if(pi<0){ if(seenBefore(id)){st="재진입";cls="re";} else {st="신규";cls="new";} } else { const d=pi-k; st=d>0?`▲${d}`:d<0?`▼${-d}`:"–"; cls=d>=10?"up":""; } } return `<div class="rrow"><span class="r">${k+1}</span>${photo(id)}<span><a href="${url(id)}" target="_blank" rel="noreferrer" style="text-decoration:none">${esc(q.n)}</a><br><span class="pbrand">${esc(q.b)}${q.x?" · 판매 종료":""}</span></span><span class="st ${cls}">${st}</span></div>`;}).join("")}</div>`:`<p class="empty">이 달·카테고리는 무신사 아카이브에 순위가 없습니다.</p>`}
+    ${ids.length?`<div class="rank-table">${ids.map((id,k)=>{const q=P(id); let st="", cls=""; if(prevIds){ const pi=prevIds.indexOf(id); if(pi<0){ if(seenBefore(id)){st="재진입";cls="re";} else {st="신규";cls="new";} } else { const d=pi-k; st=d>0?`▲${d}`:d<0?`▼${-d}`:"–"; cls=d>=10?"up":""; } } return `<div class="rrow"><span class="r">${k+1}</span>${photo(id)}<span><a href="${url(id)}" target="_blank" rel="noreferrer" style="text-decoration:none">${esc(q.n)}</a><br><span class="pbrand">${esc(q.b)}${q.x?" · 판매 종료":""}</span>${q.p?`<span class="rprice">정가 ${q.p.toLocaleString("ko-KR")}원</span>`:""}</span><span class="st ${cls}">${st}</span></div>`;}).join("")}</div>`:`<p class="empty">이 달·카테고리는 무신사 아카이브에 순위가 없습니다.</p>`}
   </div>`;
 }
 

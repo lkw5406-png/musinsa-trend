@@ -39,6 +39,7 @@
 | 단계 | Tool | 결과물 |
 |---|---|---|
 | 1. 수집 | `python tools/musinsa_archive.py` (이미 받은 달은 건너뜀, `--force`로 다시) | `data/archive_monthly/YYYY-MM.csv` |
+| 1-2. 정가 | `python tools/archive_prices.py` (백그라운드, 이어받기) | `data/archive_prices.json` |
 | 2. 분석 | `python tools/analyze_archive.py` | `.tmp/archive_analysis.json` |
 | 3. 원인 조사 (Claude) | 웹 검색 · 무신사 월간 랭킹 콘텐츠 | `data/archive_reasons.json` |
 | 4. 페이지 | `python tools/build_archive_report.py` | `docs/archive/index.html` |
@@ -46,6 +47,10 @@
 
 - 수집 시간: 한 달에 약 3~5분(요청 약 150번, 간격 1.5초). 처음 32개월은 약 2~2.5시간 → **백그라운드로 돌림**.
   다음 달부터는 새 달 하나만 받으니 5분.
+- 정가 (2026-09-29 사장님 요청: 순위 찾아보기에 정가만): 아카이브엔 가격이 없어 상품 상세(`goods-detail.musinsa.com/api2/goods/{id}`)의
+  `goodsPrice.normalPrice`를 상품마다 한 번 받음. **조회한 날의 정가**(그 달 당시 가격 아님 — 무신사가 과거 가격을 주지 않음, 사장님 OK).
+  대분류 TOP 30 상품(약 2,300개, 1시간) 먼저 → 세부 카테고리 상품(약 2.3만 개). 전부 약 12~13시간이라 PC 켜 둔 동안 여러 번에 나눠 이어받음.
+  매일 수집 CSV의 original_price로 먼저 채워 요청을 줄임. 새 달이 추가되면 그 달 새 상품만 받으면 됨.
 - 사진: GitHub 페이지는 모든 상품 사진을 무신사 작은 사진(`_125`) 주소로 바로 불러옴 (매일 리포트와 같은 방식).
 - Claude 링크로 따로 만들 때만 `--embed`: 외부 사진이 막혀서 일부 상품 사진만 줄여 넣음(16MB 제한, Pillow 필요).
 

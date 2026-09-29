@@ -28,6 +28,7 @@ from common import DOCS_DIR, ROOT, TMP_DIR, USER_AGENT
 
 ANALYSIS_PATH = TMP_DIR / "archive_analysis.json"
 REASONS_PATH = ROOT / "data" / "archive_reasons.json"
+PRICES_PATH = ROOT / "data" / "archive_prices.json"  # archive_prices.py (조회 시점 정가, 받는 중이면 받은 만큼)
 TEMPLATE_PATH = Path(__file__).resolve().parent / "archive_report_template.html"
 THUMB_DIR = TMP_DIR / "archive_thumbs"
 PAGES_OUT = DOCS_DIR / "archive" / "index.html"
@@ -83,11 +84,13 @@ def thumb(pid: str, url: str) -> str:
     return "data:image/webp;base64," + base64.b64encode(cached.read_bytes()).decode()
 
 
-def compact_products(products: dict, with_image_path: bool) -> dict:
-    """페이지에 넣는 상품 정보. 사진은 무신사 주소 뒷부분만(i) 넣어 크기를 줄인다."""
+def compact_products(products: dict, with_image_path: bool, prices: dict) -> dict:
+    """페이지에 넣는 상품 정보. 사진은 무신사 주소 뒷부분만(i) 넣어 크기를 줄인다. p = 정가."""
     out = {}
     for pid, p in products.items():
         item = {"n": p["name"], "b": p["brand"], "c": p["cat"], "s": p["sub"]}
+        if (prices.get(pid) or {}).get("normal"):
+            item["p"] = prices[pid]["normal"]
         if p.get("discontinued"):
             item["x"] = 1
         if p.get("tags"):
@@ -115,10 +118,13 @@ def build(out_path: Path, embed: bool) -> None:
     a = json.loads(ANALYSIS_PATH.read_text(encoding="utf-8"))
     reasons = json.loads(REASONS_PATH.read_text(encoding="utf-8")) if REASONS_PATH.exists() else {}
     imgs = embedded_images(a) if embed else {}
+    prices = json.loads(PRICES_PATH.read_text(encoding="utf-8")) if PRICES_PATH.exists() else {}
+    price_dates = sorted({v["at"] for v in prices.values() if v.get("normal")})
     data = {
         "months": a["months"], "categories": a["categories"],
-        "products": compact_products(a["products"], with_image_path=not embed), "genders": a["genders"],
+        "products": compact_products(a["products"], not embed, prices), "genders": a["genders"],
         "reasons": reasons, "imgs": imgs, "image_host": IMAGE_HOST,
+        "price_dates": [price_dates[0], price_dates[-1]] if price_dates else [],
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     html = TEMPLATE_PATH.read_text(encoding="utf-8").replace("/*__DATA__*/null", payload)
