@@ -1,0 +1,72 @@
+# 보고서 페이지 공개 (2026-09-29 사장님 결정: 코드는 비공개, 보고서만 공개)
+# 이 저장소(비공개 musinsa-trend-code)의 docs/ → 공개 저장소 musinsa-trend의 docs/ → https://lkw5406-png.github.io/musinsa-trend/
+# site/ 폴더(공개 저장소의 자동 실행 설정·안내문)는 공개 저장소 맨 위로 복사
+# 오늘 일간 랭킹이 이번 push로 새로 저장됐으면 → Claude 루틴(사진 판독 → 급상승 원인 조사 → 리포트 다시 만들기) 시작
+# 비공개 저장소는 실행 시간이 월 2000분까지만 무료 → 여기선 1분 안에 끝나는 복사만 함(무거운 수집은 공개 저장소의 daily.yml)
+name: publish-site
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "site/**", "data/history/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-site
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: code
+          fetch-depth: 0   # 이번 push에서 바뀐 파일을 보려고 기록 전체를 받음
+
+      - name: 공개 저장소 받기
+        uses: actions/checkout@v4
+        with:
+          repository: lkw5406-png/musinsa-trend
+          ssh-key: ${{ secrets.SITE_DEPLOY_KEY }}
+          path: site
+
+      - name: 보고서 복사 → 공개 저장소에 올리기
+        run: |
+          rsync -a --delete code/docs/ site/docs/
+          rsync -a code/site/ site/
+          cd site
+          git config user.name "musinsa-report-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "publish $(TZ=Asia/Seoul date '+%F %H:%M')" || { echo "바뀐 것 없음"; exit 0; }
+          git push
+
+      # 수집이 끝나자마자 Claude 루틴 시작 (2026-09-27 사장님: 10시까지 기다리지 말 것)
+      # 비밀값 2개(CLAUDE_ROUTINE_URL, CLAUDE_ROUTINE_TOKEN)는 claude.ai 루틴 편집 → API 트리거에서 받아 이 저장소 GitHub Secrets에 넣음
+      - name: Claude 사진 판독·원인 조사 시작
+        if: always() && github.event_name == 'push'
+        env:
+          FIRE_URL: ${{ secrets.CLAUDE_ROUTINE_URL }}
+          FIRE_TOKEN: ${{ secrets.CLAUDE_ROUTINE_TOKEN }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          cd code
+          D=$(TZ=Asia/Seoul date +%F)
+          if ! git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null | grep -qx "data/history/$D.csv"; then
+            echo "오늘 일간 랭킹이 새로 저장된 push가 아님 → 건너뜀"; exit 0
+          fi
+          if [ -z "$FIRE_URL" ] || [ -z "$FIRE_TOKEN" ]; then
+            echo "루틴 주소·토큰이 아직 없음 → 건너뜀 (루틴의 예약 시간에 돌아감)"; exit 0
+          fi
+          curl -fsS -X POST "$FIRE_URL" \
+            -H "Authorization: Bearer $FIRE_TOKEN" \
+            -H "anthropic-beta: experimental-cc-routine-2026-04-01" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "Content-Type: application/json" \
+            -d '{}'
