@@ -40,7 +40,7 @@
 - 리포트 맨 위 [일간|주간|월간] 전환은 보던 성별·탭을 유지한 채 이동.
 
 한 번에 실행: `python tools/run_daily.py` (수집 셋 다 → 오늘 리포트 날인 기간만 리포트). 재확인: `--only-missing`. 리포트 날이 아닌데 만들 때: `--report weekly`
-자동 실행: `site/.github/workflows/daily.yml` (GitHub Actions, UTC 21:00 본 실행 + UTC 03:00·11:00 재확인, 제한 300분). **공개 저장소 musinsa-trend에서 돌면서** 비공개 저장소의 코드를 받아 실행하고 결과를 비공개 저장소에 push(아래 '필요한 설정'). 실패하면 GitHub이 저장소 주인 계정 이메일로 자동 알림.
+자동 실행: `.github/workflows/daily.yml` (GitHub Actions, UTC 21:00 본 실행 + UTC 03:00·11:00 재확인, 제한 300분). 실패하면 GitHub이 저장소 주인 계정 이메일로 자동 알림.
 (`tools/send_email.py` + `--alert-on-fail`은 PC에서 돌릴 때 Gmail로 알림을 받고 싶을 때만 사용 — 현재 미사용)
 사진을 품은 한 장짜리 페이지(Claude 링크 등): `python tools/build_report.py --date 날짜 --standalone 파일.html`
 (`build_report.py`는 `.tmp/analysis_날짜.json`이 있어야 함 — 새 PC·`.tmp` 비운 뒤엔 없어서 FileNotFoundError. 아래 7번 '오늘 리포트 다시 만들기'로 분석부터 다시 하면 됨. 2026-09-27 새 PC 이사 때 발견)
@@ -66,7 +66,7 @@
 ## 순위 급상승 원인 조사 (매일, 2026-09-27 사장님 지시)
 '시장 동향'의 '순위가 크게 오른 상품'(성별마다 최대 10개, 하루 약 20개)마다 **왜 올랐는지, 유입이 어디서 왔는지**를
 웹·유튜브·SNS·커뮤니티로 깊게 조사해 적는다. 인기 브랜드 신상품이 원인이면 그렇게 적어도 됨. 유료 API 없이 Claude가 직접.
-- **자동**: 사진 판독과 같은 루틴에서 이어서 (사진 판독 → 원인 조사 → 리포트 다시 만들기 → 푸시). 2026-09-27 사장님 지시로 10시까지 기다리지 않고 **수집이 끝나자마자** 시작: 비공개 저장소의 `.github/workflows/publish.yml` 마지막 단계가 오늘 일간 랭킹(`data/history/오늘.csv`)이 새로 들어온 push에서만 루틴 API 트리거를 부름(비공개 저장소 musinsa-trend-code의 GitHub Secrets `CLAUDE_ROUTINE_URL`·`CLAUDE_ROUTINE_TOKEN`, claude.ai 루틴 편집 → API 트리거에서 발급). 비밀값이 없거나 부르기가 실패하면 루틴의 예비 예약(매일 13:07 KST)에 돎 — 이미 끝난 날은 금방 끝나고, 한 번에 150개 제한으로 남은 사진은 이때 마저 처리
+- **자동**: 사진 판독과 같은 루틴에서 이어서 (사진 판독 → 원인 조사 → 리포트 다시 만들기 → 푸시). 2026-09-27 사장님 지시로 10시까지 기다리지 않고 **수집이 끝나자마자** 시작: `daily.yml` 마지막 단계가 오늘 일간 랭킹을 새로 저장한 실행에서만 루틴 API 트리거를 부름(GitHub Secrets `CLAUDE_ROUTINE_URL`·`CLAUDE_ROUTINE_TOKEN`, claude.ai 루틴 편집 → API 트리거에서 발급). 비밀값이 없거나 부르기가 실패하면 루틴의 예비 예약(매일 13:07 KST)에 돎 — 이미 끝난 날은 금방 끝나고, 한 번에 150개 제한으로 남은 사진은 이때 마저 처리
 - 순서:
   1. `python tools/rise_reasons.py --check` → 오늘 리포트 기간별 조사할 개수 (일간 매일, 주간 월요일, 월간 1일)
   2. `python tools/rise_reasons.py --next --period daily` → `.tmp/rise_queue.json` + 화면에 상품별 **데이터 단서**(가격·할인율 변화, 대표 사진 등록일=신상 여부, 같은 브랜드 동반 상승, 판매량 표시)와 예전 조사 기록
@@ -138,15 +138,10 @@
 - 다섯 주소 모두 robots.txt 없음(404). www.musinsa.com은 등록 안 된 봇을 금지하므로 쓰지 않음.
 
 ## 필요한 설정
-- **저장소 2개 (2026-09-29 사장님 결정: 코드는 숨기고 보고서만 공개)**
-  - 비공개 https://github.com/lkw5406-png/musinsa-trend-code — 코드·데이터·매뉴얼·docs 전부. PC와 Claude 루틴은 여기서 작업하고 여기에 push.
-  - 공개 https://github.com/lkw5406-png/musinsa-trend — 보고서 페이지(`docs/`)와 자동 수집 설정만. **직접 고치지 않음** (비공개 쪽이 덮어씀).
-  - 흐름: 공개 쪽 `daily.yml`이 비공개 코드를 받아 수집 → 비공개에 push → 비공개 쪽 `publish.yml`이 `docs/`를 공개 쪽 `docs/`로, `site/`를 공개 쪽 맨 위로 복사(1~2분) + 루틴 시작.
-  - 왜 이렇게: 비공개 저장소는 GitHub 실행 시간이 월 2000분까지만 무료인데 수집이 하루 20~80분 → 무거운 수집은 무료·무제한인 공개 저장소에서.
-  - 공개 저장소의 자동 수집 설정을 바꾸려면 비공개 쪽 `site/.github/workflows/daily.yml`을 고쳐서 push.
-- **리포트 고정 링크: https://lkw5406-png.github.io/musinsa-trend/** (공개 저장소 Settings → Pages → Branch `main` / 폴더 `/docs`)
-- 저장소끼리 여는 열쇠(deploy key, 2026-09-29 설정): 공개 쪽 Secrets `CODE_DEPLOY_KEY` ↔ 비공개 쪽 Deploy keys(쓰기), 비공개 쪽 Secrets `SITE_DEPLOY_KEY` ↔ 공개 쪽 Deploy keys(쓰기). 열쇠가 망가지면 새로 만들어 두 곳에 다시 넣음.
-- 공개 저장소의 예약 실행은 60일 동안 저장소 변화가 없으면 GitHub이 멈춤 → 매일 보고서가 올라가므로 평소엔 문제없음. 멈추면 공개 저장소 Actions 탭에서 다시 켬.
+- 저장소: https://github.com/lkw5406-png/musinsa-trend (공개)
+- **리포트 고정 링크: https://lkw5406-png.github.io/musinsa-trend/**
+- GitHub Pages: Settings → Pages → Branch `main` / 폴더 `/docs` (저장소가 공개일 때만 무료로 켜짐)
+- 비밀 정보 필요 없음 (Gmail 연동은 2026-09-24 사장님 결정으로 뺌)
 
 ## 수집 원칙 (바꾸지 말 것)
 - 정직한 User-Agent(`MusinsaTrendReport/...`)로 요청. 사람 흉내·봇 위장 금지.
@@ -159,8 +154,7 @@
 - **"수집 결과가 비정상적으로 적음" (구조 변경)**: `https://api.musinsa.com/api2/hm/web/v5/pans/ranking?storeCode=musinsa&subPan=product`에서 섹션 번호(`"sectionId"`)와 탭 이름(`applied_tab`, `extra_info`) 재확인. 상품 필드(`items[].info`, `items[].image.rank`)가 바뀌었으면 `parse_products` 수정.
 - **분류 누락이 많음**: `python tools/classify_attributes.py data/history/날짜.csv`로 확인 → `attribute_keywords.json`에 키워드 추가. 짧은 키워드는 `re:` 정규식으로 다른 단어 안에서 잡히지 않게 (예: `re:블루(?!종)`).
 - **소재가 이상하게 나옴**: `product_details.py`의 `FIBERS` 목록/`main_fiber` 확인. 표기 예시와 기대값을 먼저 테스트.
-- **실패 알림을 못 받음**: GitHub → 오른쪽 위 프로필 → Settings → Notifications → Actions에서 실패 알림 이메일이 켜져 있는지 확인. 수집 실행 기록은 **공개** 저장소 musinsa-trend의 Actions 탭, 보고서 복사·루틴 시작 기록은 **비공개** 저장소 musinsa-trend-code의 Actions 탭.
-- **보고서가 링크에 안 올라옴**: 비공개 저장소 Actions 탭의 publish-site 실행 확인(수동 실행 버튼 있음). 'Permission denied (publickey)'면 deploy key 문제(위 '필요한 설정').
+- **실패 알림을 못 받음**: GitHub → 오른쪽 위 프로필 → Settings → Notifications → Actions에서 실패 알림 이메일이 켜져 있는지 확인. 실행 기록은 저장소의 Actions 탭.
 
 ## 알게 된 것 (계속 추가)
 - 2026-09-24: 랭킹 1페이지 ≈ 101개 (3페이지면 300위까지 빠짐없이 받음, 2026-09-25 확인). 전체 카테고리(000) 랭킹은 상품의 실제 카테고리를 알려주지 않아 카테고리별로 요청해야 함.
