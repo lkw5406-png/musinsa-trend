@@ -127,33 +127,6 @@ table.heat td[data-l="4"]{color:#fff} table.heat td[data-l="5"],table.heat td[da
 table.heat td:hover{outline:2px solid var(--ink);outline-offset:0}
 .note{background:var(--accent-soft);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--ink);max-width:80ch}
 
-/* season calendar (list) */
-.profile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-@media (max-width:700px){.profile{grid-template-columns:1fr}}
-.pcol{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}
-.pcol ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.pcol li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:14px}
-.pcol .pm{color:var(--muted);font-size:12.5px}
-.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none;align-self:center}
-.dot-s{background:var(--accent)} .dot-a{background:var(--muted)}
-.slist{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:4px 18px 10px}
-.slist h3.yr{font-size:15px;padding:14px 0 4px;font-family:var(--mono);font-weight:500}
-.srow{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;padding:10px 0;border-top:1px solid var(--hair)}
-.slist .srow:first-child{border-top:0}
-.sm{display:flex;flex-direction:column;line-height:1.25}
-.sm b{font-size:15px} .sm span{font-size:12px;color:var(--muted)}
-.sbody{display:flex;flex-direction:column;gap:6px;min-width:0}
-.sbars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,auto);grid-auto-flow:column;gap:6px 22px;align-content:start}
-@media (max-width:760px){.sbars{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}}
-.sb{display:grid;grid-template-columns:minmax(0,10.5em) minmax(40px,1fr) 2em;align-items:center;gap:8px;font-size:13.5px}
-.sl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.strack{height:10px;background:var(--surface-2);border-radius:3px;overflow:hidden}
-.strack i{display:block;height:100%;background:var(--axis);border-radius:3px}
-.sb.is-season .strack i{background:var(--accent)} .sb.is-always .strack i{background:var(--muted)}
-.sb.is-season .sl{font-weight:700}
-.sn{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
-.more{font-size:12px;color:var(--muted)}
-
 /* category type analysis (cz-) */
 .cz-card{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:4px}
 .cz-card h3{font-size:15px;margin-bottom:6px}
@@ -320,7 +293,7 @@ const TABS = [["summary","핵심 요약"],["browse","순위 찾아보기"],["ste
 const SEASON_OF = m => m>=3&&m<=5?"봄":m>=6&&m<=8?"여름":m>=9&&m<=11?"가을":"겨울";
 const SEASONS = [["봄",[3,4,5]],["여름",[6,7,8]],["가을",[9,10,11]],["겨울",[12,1,2]]];
 
-const state = {g:"A", tab:"summary", month:M[M.length-1], cat:"all", bcat:"001", scat:"001", rcat:"001", ball:false, bmore:new Set()}; // ball: 순위 찾아보기에서 그해 모든 달 보기, bmore: 30위까지 펼친 달
+const state = {g:"A", tab:"summary", month:M[M.length-1], cat:"all", bcat:"001", rcat:"001", ball:false, bmore:new Set()}; // ball: 순위 찾아보기에서 그해 모든 달 보기, bmore: 30위까지 펼친 달
 try{ const s = JSON.parse(localStorage.getItem("mra-state")||"{}"); if(s.g in GEN) state.g=s.g; }catch(e){}
 const h0 = (location.hash||"").slice(1); if(TABS.some(t=>t[0]===h0)) state.tab=h0;
 
@@ -357,11 +330,9 @@ document.addEventListener("click", e=>{
   const g = e.target.closest("[data-g]"); if(g){ state.g=g.dataset.g; if(!topCats().some(([c])=>c===state.bcat||D.categories[state.bcat]?.parent===c)) state.bcat="001"; if(state.cat!=="all"&&!topCats().some(([c])=>c===state.cat)) state.cat="all"; try{localStorage.setItem("mra-state",JSON.stringify({g:state.g}))}catch(_){} chrome(); render(); return; }
   const t = e.target.closest("[data-tab]"); if(t){ e.preventDefault(); go(t.dataset.tab); return; }
   const c = e.target.closest("[data-cat]"); if(c){ state.cat=c.dataset.cat; render(); return; }
-  const sc = e.target.closest("[data-scat]"); if(sc){ state.scat=sc.dataset.scat; render(); return; }
   const se = e.target.closest("[data-sea]"); if(se){ state.sea=se.dataset.sea; render(); return; }
   const sy = e.target.closest("[data-sy]"); if(sy){ state.sy=sy.dataset.sy; render(); return; }
   const rc = e.target.closest("[data-rcat]"); if(rc){ state.rcat=rc.dataset.rcat; render(); return; }
-  const sly = e.target.closest("[data-sly]"); if(sly){ state.sly=sly.dataset.sly; render(); return; }
   const mv = e.target.closest("[data-mstep]"); if(mv){ const i=M.indexOf(state.month)+(+mv.dataset.mstep); if(i>=0&&i<M.length){state.month=M[i]; render();} return; }
   const b = e.target.closest("[data-browse]"); if(b){ state.bcat=b.dataset.browse; go("browse"); return; }
   const bm = e.target.closest("[data-bmore]"); if(bm){ // 펼치기/접기 후 그 달 제목이 화면에서 같은 자리에 오게
@@ -647,62 +618,8 @@ function catTypeBlock(){
   </div>`;
 }
 
-// 세부 종류마다: 매년 특정 달에 몰리는지(시즌템), 1년 내내 있는지
-function seasonProfile(cat){
-  const comp = G().composition[cat]; const seasonal = [], always = [];
-  if(!comp) return {seasonal, always};
-  Object.entries(comp.calendar).forEach(([sub, cal])=>{
-    const vals = cal.map(v=>v??0), peak = Math.max(...vals), mean = vals.reduce((a,b)=>a+b,0)/12;
-    const counts = comp.by_month[sub], present = counts.filter(n=>n>=2).length / counts.length;
-    if(present >= 0.8) always.push({sub, mean});
-    else if(peak >= 3 && peak >= mean*1.8){
-      const months = vals.map((v,i)=>v >= Math.max(2, peak*0.5) ? i+1 : 0).filter(Boolean);
-      const top = vals.indexOf(peak)+1;
-      seasonal.push({sub, peak, months, top});
-    }
-  });
-  seasonal.sort((a,b)=>((a.top+9)%12)-((b.top+9)%12));   // 3월(봄)부터
-  always.sort((a,b)=>b.mean-a.mean);
-  return {seasonal, always};
-}
-function monthSpan(ms){ // [11,12,1] → "11·12·1월" (연말→연초 순서 유지)
-  const sorted = [...ms].sort((a,b)=>a-b);
-  const wrap = sorted.includes(12) && sorted.includes(1) && sorted.some(m=>m<=2) && sorted.some(m=>m>=10);
-  const order = wrap ? [...sorted.filter(m=>m>=6), ...sorted.filter(m=>m<6)] : sorted;
-  return order.join("·")+"월";
-}
 function season(){
-  const cats = topCats(); if(!cats.some(([c])=>c===state.scat)) state.scat = cats[0][0];
-  const cat = state.scat, comp = G().composition[cat] || {by_month:{}};
-  const {seasonal, always} = seasonProfile(cat);
-  const seasonalSet = new Set(seasonal.map(x=>x.sub)), alwaysSet = new Set(always.map(x=>x.sub));
-  const listYears = [...new Set(M.map(ym=>ym.slice(0,4)))];
-  const ly = listYears.includes(state.sly) ? state.sly : listYears[listYears.length-1];
-  const rows = M.map((ym,i)=>{
-    if(!ym.startsWith(ly)) return "";
-    const items = Object.entries(comp.by_month).map(([s,c])=>[s,c[i]]).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]);
-    const shown = items.slice(0,4), rest = items.slice(4), restN = rest.reduce((a,[,n])=>a+n,0);
-    const m = +ym.slice(5);
-    const year = "";
-    return `${year}<div class="srow"><div class="sm"><b>${m}월</b><span>${SEASON_OF(m)}</span></div><div class="sbody"><div class="sbars">${
-      shown.map(([s,n])=>`<div class="sb ${seasonalSet.has(s)?"is-season":alwaysSet.has(s)?"is-always":""}"><span class="sl">${esc(s)}</span><span class="strack"><i style="width:${(n/30*100).toFixed(0)}%"></i></span><span class="sn">${n}</span></div>`).join("")
-    }</div>${rest.length?`<div class="more">그 외 ${rest.length}종 ${restN}개</div>`:""}</div></div>`;
-  }).join("");
-  return `${seasonRecBlock()}${catTypeBlock()}
-  <div class="block">
-    <div><h2>종류별 시즌 흐름</h2><p class="lede">대분류 TOP 30을 어떤 종류의 옷이 채웠는지 셌습니다. 위에는 매년 돌아오는 시즌템과 1년 내내 있는 옷을 요약했고, 아래에는 달마다 가장 많이 들어간 종류 4개를 적었습니다. 막대 길이는 30자리 중 몇 자리인지입니다.</p></div>
-    <div class="chips">${cats.map(([k,v])=>`<button type="button" data-scat="${k}" aria-pressed="${cat===k}">${v}</button>`).join("")}</div>
-    ${R.categories&&R.categories[cat]?`<div class="note">${esc(R.categories[cat])}</div>`:""}
-    <div class="profile">
-      <div class="pcol"><div class="eyebrow">매년 이때 돌아오는 옷</div>${seasonal.length?`<ul>${seasonal.map(x=>`<li><span class="dot dot-s"></span><b>${esc(x.sub)}</b><span class="pm">${monthSpan(x.months)} · 가장 많을 때 평균 ${x.peak.toFixed(0)}자리</span></li>`).join("")}</ul>`:`<p class="empty">뚜렷한 시즌템이 없습니다.</p>`}</div>
-      <div class="pcol"><div class="eyebrow">1년 내내 있는 옷</div>${always.length?`<ul>${always.map(x=>`<li><span class="dot dot-a"></span><b>${esc(x.sub)}</b><span class="pm">평균 ${x.mean.toFixed(0)}자리</span></li>`).join("")}</ul>`:`<p class="empty">해당 없음</p>`}</div>
-    </div>
-  </div>
-  <div class="block">
-    <div class="legend"><span><i style="background:var(--accent)"></i>시즌템</span><span><i style="background:var(--muted)"></i>1년 내내 있는 옷</span><span><i style="background:var(--axis)"></i>그 밖</span></div>
-    <div class="chips" aria-label="달별 목록 연도">${listYears.map(y=>`<button type="button" data-sly="${y}" aria-pressed="${ly===y}">${y}년</button>`).join("")}</div>
-    <div class="slist">${rows}</div>
-  </div>`;
+  return `${seasonRecBlock()}${catTypeBlock()}`;
 }
 
 function month(){
