@@ -236,6 +236,9 @@ table.heat td:hover{outline:2px solid var(--ink);outline-offset:0}
 .rank-table{background:var(--surface);border:1px solid var(--hair);border-radius:10px;overflow:hidden}
 .rrow{display:grid;grid-template-columns:34px 44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 14px;border-top:1px solid var(--hair);font-size:13.5px}
 .rrow:first-child{border-top:0}
+.mhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:18px 0 8px;scroll-margin-top:12px}
+.mhead:first-child{margin-top:0}
+.mhead button{font:inherit;font-size:13px;border:0;background:none;color:var(--accent);cursor:pointer}
 .rrow .r{font-family:var(--mono);font-weight:500;text-align:right}
 .rrow .ph{width:44px;height:52px}
 .rrow .st{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -292,7 +295,7 @@ const TABS = [["summary","핵심 요약"],["browse","순위 찾아보기"],["ste
 const SEASON_OF = m => m>=3&&m<=5?"봄":m>=6&&m<=8?"여름":m>=9&&m<=11?"가을":"겨울";
 const SEASONS = [["봄",[3,4,5]],["여름",[6,7,8]],["가을",[9,10,11]],["겨울",[12,1,2]]];
 
-const state = {g:"A", tab:"summary", month:M[M.length-1], cat:"all", bcat:"001", scat:"001"};
+const state = {g:"A", tab:"summary", month:M[M.length-1], cat:"all", bcat:"001", scat:"001", ball:false}; // ball: 순위 찾아보기에서 그해 모든 달 보기
 try{ const s = JSON.parse(localStorage.getItem("mra-state")||"{}"); if(s.g in GEN) state.g=s.g; }catch(e){}
 const h0 = (location.hash||"").slice(1); if(TABS.some(t=>t[0]===h0)) state.tab=h0;
 
@@ -335,10 +338,12 @@ document.addEventListener("click", e=>{
   const sly = e.target.closest("[data-sly]"); if(sly){ state.sly=sly.dataset.sly; render(); return; }
   const mv = e.target.closest("[data-mstep]"); if(mv){ const i=M.indexOf(state.month)+(+mv.dataset.mstep); if(i>=0&&i<M.length){state.month=M[i]; render();} return; }
   const b = e.target.closest("[data-browse]"); if(b){ state.bcat=b.dataset.browse; go("browse"); return; }
+  const bj = e.target.closest("[data-bjump]"); if(bj){ document.getElementById("bm-"+bj.dataset.bjump)?.scrollIntoView({behavior:"smooth"}); return; }
   const gm = e.target.closest("[data-gomonth]"); if(gm){ state.month=gm.dataset.gomonth; go("month"); return; }
 });
 document.addEventListener("change", e=>{
-  if(e.target.id==="msel"||e.target.id==="bmonth"){ state.month=e.target.value; render(); }
+  if(e.target.id==="msel"){ state.month=e.target.value; render(); }
+  if(e.target.id==="bmonth"){ state.ball = e.target.value==="all"; if(!state.ball) state.month=e.target.value; render(); }
   if(e.target.id==="byear"){ // 같은 달이 그해에 있으면 그 달, 없으면 그해 마지막 달
     const y = e.target.value, same = `${y}-${state.month.slice(5)}`;
     state.month = M.includes(same) ? same : M.filter(m=>m.startsWith(y)).pop(); render(); }
@@ -608,23 +613,33 @@ function brand(){
   </div>`;
 }
 
+// 한 달치 순위표 (등락은 바로 전달과 비교)
+function rankTable(ym){
+  const i = M.indexOf(ym), prev = i>0?M[i-1]:null, byMonth = G().top[state.bcat]||{};
+  const ids = byMonth[ym]||[];
+  const prevIds = prev?(byMonth[prev]||[]):null;
+  const seenBefore = id => M.slice(0,i).some(m=>(byMonth[m]||[]).includes(id));
+  return ids.length?`<div class="rank-table">${ids.map((id,k)=>{const q=P(id); let st="", cls=""; if(prevIds){ const pi=prevIds.indexOf(id); if(pi<0){ if(seenBefore(id)){st="재진입";cls="re";} else {st="신규";cls="new";} } else { const d=pi-k; st=d>0?`▲${d}`:d<0?`▼${-d}`:"–"; cls=d>=10?"up":""; } } return `<div class="rrow"><span class="r">${k+1}</span>${photo(id)}<span><a href="${url(id)}" target="_blank" rel="noreferrer" style="text-decoration:none">${esc(q.n)}</a><br><span class="pbrand">${esc(q.b)}${q.x?" · 판매 종료":""}</span>${q.p?`<span class="rprice">정가 ${q.p.toLocaleString("ko-KR")}원</span>`:""}</span><span class="st ${cls}">${st}</span></div>`;}).join("")}</div>`:`<p class="empty">이 달·카테고리는 무신사 아카이브에 순위가 없습니다.</p>`;
+}
+
 function browse(){
-  const ym = state.month, i = M.indexOf(ym), prev = i>0?M[i-1]:null;
-  const top = G().top, cats = D.categories;
-  const ids = (top[state.bcat]||{})[ym]||[];
-  const prevIds = prev?((top[state.bcat]||{})[prev]||[]):null;
-  const seenBefore = id => M.slice(0,i).some(m=>((top[state.bcat]||{})[m]||[]).includes(id));
+  const ym = state.month, yr = ym.slice(0,4), yearMonths = M.filter(m=>m.startsWith(yr));
+  const cats = D.categories;
   const opts = topCats().map(([code,name])=>`<optgroup label="${name}"><option value="${code}" ${state.bcat===code?"selected":""}>${name} 전체</option>${Object.entries(cats).filter(([,c])=>c.parent===code).map(([sc,c])=>`<option value="${sc}" ${state.bcat===sc?"selected":""}>${esc(c.name)}</option>`).join("")}</optgroup>`).join("");
   return `
   <div class="block">
-    <div><h2>순위 찾아보기</h2><p class="lede">달·카테고리를 골라 무신사 월간 TOP 30 전체를 봅니다. 세부 카테고리(니트, 패딩, 데님 팬츠 등)도 고를 수 있습니다.</p>${(D.price_dates||[]).length?`<p class="bfoot">정가: ${D.price_dates[1].slice(0,4)}년 ${+D.price_dates[1].slice(5,7)}월 무신사 상품 페이지 조회 기준(그 달 당시 가격이 아님). 아직 받지 못한 상품은 비어 있습니다.</p>`:""}</div>
+    <div><h2>순위 찾아보기</h2><p class="lede">달·카테고리를 골라 무신사 월간 TOP 30 전체를 봅니다. 세부 카테고리(니트, 패딩, 데님 팬츠 등)도 고를 수 있고, 달에서 '전체'를 고르면 그해 1~12월을 한 번에 이어서 봅니다.</p>${(D.price_dates||[]).length?`<p class="bfoot">정가: ${D.price_dates[1].slice(0,4)}년 ${+D.price_dates[1].slice(5,7)}월 무신사 상품 페이지 조회 기준(그 달 당시 가격이 아님). 아직 받지 못한 상품은 비어 있습니다.</p>`:""}</div>
     <div class="filters">
       <select id="byear" aria-label="연도">${[...new Set(M.map(m=>m.slice(0,4)))].map(y=>`<option value="${y}" ${ym.startsWith(y)?"selected":""}>${y}년</option>`).join("")}</select>
-      <select id="bmonth" aria-label="달">${M.filter(m=>m.slice(0,4)===ym.slice(0,4)).map(m=>`<option value="${m}" ${m===ym?"selected":""}>${+m.slice(5)}월</option>`).join("")}</select>
+      <select id="bmonth" aria-label="달"><option value="all" ${state.ball?"selected":""}>전체</option>${yearMonths.map(m=>`<option value="${m}" ${!state.ball&&m===ym?"selected":""}>${+m.slice(5)}월</option>`).join("")}</select>
       <select id="bcat" aria-label="카테고리">${opts}</select>
-      <button type="button" data-gomonth="${ym}" style="font:inherit;font-size:13px;border:0;background:none;color:var(--accent);cursor:pointer">이 달 배경 보기 ›</button>
+      ${state.ball?"":`<button type="button" data-gomonth="${ym}" style="font:inherit;font-size:13px;border:0;background:none;color:var(--accent);cursor:pointer">이 달 배경 보기 ›</button>`}
     </div>
-    ${ids.length?`<div class="rank-table">${ids.map((id,k)=>{const q=P(id); let st="", cls=""; if(prevIds){ const pi=prevIds.indexOf(id); if(pi<0){ if(seenBefore(id)){st="재진입";cls="re";} else {st="신규";cls="new";} } else { const d=pi-k; st=d>0?`▲${d}`:d<0?`▼${-d}`:"–"; cls=d>=10?"up":""; } } return `<div class="rrow"><span class="r">${k+1}</span>${photo(id)}<span><a href="${url(id)}" target="_blank" rel="noreferrer" style="text-decoration:none">${esc(q.n)}</a><br><span class="pbrand">${esc(q.b)}${q.x?" · 판매 종료":""}</span>${q.p?`<span class="rprice">정가 ${q.p.toLocaleString("ko-KR")}원</span>`:""}</span><span class="st ${cls}">${st}</span></div>`;}).join("")}</div>`:`<p class="empty">이 달·카테고리는 무신사 아카이브에 순위가 없습니다.</p>`}
+    ${state.ball?`
+    <div class="chips" aria-label="달로 이동">${yearMonths.map(m=>`<button type="button" data-bjump="${m}">${+m.slice(5)}월</button>`).join("")}</div>
+    ${yearMonths.length<12?`<p class="bfoot">${yr}년은 ${yearMonths.map(m=>+m.slice(5)+"월").join("·")} 자료만 있습니다.</p>`:""}
+    <div>${yearMonths.map(m=>`<div class="mhead" id="bm-${m}"><h3>${ymLabel(m)}</h3><button type="button" data-gomonth="${m}">이 달 배경 보기 ›</button></div>${rankTable(m)}`).join("")}</div>`
+    : rankTable(ym)}
   </div>`;
 }
 
