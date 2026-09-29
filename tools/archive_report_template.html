@@ -505,7 +505,8 @@ function seasonRecBlock(){
 
 
 /* ---------- 카테고리별 옷 종류 분석 (무신사 랭킹 데이터만: 대분류 TOP 30 + 세부 카테고리 TOP 30) ---------- */
-const REC_TOP = 10, REC_PER_TYPE = 3;   // 추천 옷 종류·추천 상품 개수, 한 종류에서 최대 몇 개
+const REC_TOP = 10, REC_PER_TYPE = 3;             // 추천 옷 종류: 개수, 한 종류에서 최대 몇 개
+const REC_PROD_TOP = 30, REC_PROD_PER_TYPE = 10;  // 추천 상품: 개수(2026-09-29 사장님: 30까지), 한 종류에서 최대 몇 개
 const TYPE_GROUPS = ["silhouette","fit","texture","detail"];   // 옷 종류+디자인 조합에 쓰는 특징 (컬러는 보조 정보로만)
 const won = v => v==null ? "-" : v.toLocaleString("ko-KR")+"원";
 const manwon = v => (Math.round(v/1000)/10).toString().replace(/\.0$/,"")+"만";
@@ -572,11 +573,11 @@ function catTypeData(cat, seasonName, year){
     });
     return {...c, name: `${c.tag.replace(/ 기장$/,"")} ${c.t.sub}`, ids: ids.slice(0,4), prices: ids.map(id=>P(id).p).filter(Boolean), other};
   });
-  // ② 개별 상품: 이 기간 대분류 TOP 30 순위 가중치 합, 판매 종료 제외, 한 종류에서 최대 REC_PER_TYPE개
+  // ② 개별 상품: 이 기간 대분류 TOP 30 순위 가중치 합, 판매 종료 제외, 한 종류에서 최대 REC_PROD_PER_TYPE개
   const wCat = listWeights(cat, idx), perSub = {}, prodPicks = [];
   Object.keys(wCat).sort((a,b)=>wCat[b]-wCat[a]).forEach(id=>{
-    const q = P(id); if(q.x || prodPicks.length>=REC_TOP) return;
-    if((perSub[q.s]||0) >= REC_PER_TYPE) return; perSub[q.s]=(perSub[q.s]||0)+1;
+    const q = P(id); if(q.x || prodPicks.length>=REC_PROD_TOP) return;
+    if((perSub[q.s]||0) >= REC_PROD_PER_TYPE) return; perSub[q.s]=(perSub[q.s]||0)+1;
     let months = 0, best = 99; idx.forEach(i=>{ const r=(((G().top[cat]||{})[M[i]])||[]).indexOf(id); if(r>=0){ months++; best=Math.min(best,r+1); } });
     prodPicks.push({id, months, best, total: idx.length});
   });
@@ -612,7 +613,7 @@ function catTypeBlock(){
       <dl class="tags">${c.prices.length?`<div><dt>정가</dt><dd>중간 ${won(median(c.prices))}</dd></div>`:""}${Object.entries(c.other).map(([g,v])=>`<div><dt>${TAG_NAMES[g]}</dt><dd>${v.map(esc).join(" · ")}</dd></div>`).join("")}</dl>
       <div class="rprods">${c.ids.map(id=>{const q=P(id); return `<a href="${url(id)}" target="_blank" rel="noreferrer" title="${esc(q.b+' '+q.n)}">${photo(id)}<span class="rb">${esc(q.b)}</span></a>`;}).join("")}</div>
     </li>`).join("")}</ol>`:`<p class="empty">뚜렷한 조합이 없습니다.</p>`}
-    <div><h3 class="cz-h">추천 상품 TOP 10 — 이 기간 ${catName} TOP 30 성적순</h3><p class="bfoot">이 기간 대분류 TOP 30 순위를 점수로 더했습니다(1위 30점 … 30위 1점). 판매 종료 상품은 빼고, 한 종류에서 최대 ${REC_PER_TYPE}개.</p></div>
+    <div><h3 class="cz-h">추천 상품 TOP ${REC_PROD_TOP} — 이 기간 ${catName} TOP 30 성적순</h3><p class="bfoot">이 기간 대분류 TOP 30 순위를 점수로 더했습니다(1위 30점 … 30위 1점). 판매 종료 상품은 빼고, 한 종류에서 최대 ${REC_PROD_PER_TYPE}개.${d.prodPicks.length<REC_PROD_TOP?` 이 기간은 조건에 맞는 상품이 ${d.prodPicks.length}개입니다.`:""}</p></div>
     <ol class="cz-prods">${d.prodPicks.map((x,k)=>{const q=P(x.id); const kw=Object.entries(q.k||{}).flatMap(([,v])=>v).slice(0,4); return `<li><a href="${url(x.id)}" target="_blank" rel="noreferrer">${photo(x.id)}</a>
       <div class="cz-pinfo"><span class="cz-rk">${k+1}</span><span class="pbrand">${esc(q.b)} · ${esc(q.s)}</span><a class="pname" href="${url(x.id)}" target="_blank" rel="noreferrer">${esc(q.n)}</a>
       <span class="cz-pmeta">${x.months}/${x.total}개월 TOP 30 · 최고 ${x.best}위${q.p?` · 정가 ${won(q.p)}`:""}</span>${kw.length?`<span class="cz-kw">${kw.map(esc).join(" · ")}</span>`:""}</div></li>`;}).join("")}</ol>`}
