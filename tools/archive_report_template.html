@@ -154,6 +154,29 @@ table.heat td:hover{outline:2px solid var(--ink);outline-offset:0}
 .sn{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
 .more{font-size:12px;color:var(--muted)}
 
+/* category type analysis (cz-) */
+.cz-card{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.cz-card h3{font-size:15px;margin-bottom:6px}
+.cz-row{display:flex;flex-direction:column;gap:2px;padding:7px 0;border-top:1px solid var(--hair)}
+.cz-row:nth-of-type(1){border-top:0}
+.cz-main{display:grid;grid-template-columns:minmax(0,10em) minmax(60px,1fr) 2.6em auto;align-items:center;gap:10px;font-size:14px}
+.cz-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cz-bar{position:relative;height:12px;background:var(--surface-2);border-radius:3px}
+.cz-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:3px}
+.cz-bar b{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink)}
+.cz-val{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.cz-sub{font-size:12.5px;color:var(--muted);padding-left:0}
+.cz-h{font-size:16px;margin-top:6px}
+.cz-prods{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.cz-prods li{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.cz-prods .ph{width:100%;height:auto;aspect-ratio:5/6}
+.cz-pinfo{display:flex;flex-direction:column;gap:3px;font-size:13px;min-width:0}
+.cz-pinfo .pname{text-decoration:none;font-weight:500;line-height:1.35}
+.cz-rk{font-family:var(--mono);color:var(--accent);font-weight:500}
+.cz-pmeta{font-size:12px;color:var(--ink-2)}
+.cz-kw{font-size:12px;color:var(--muted)}
+@media (max-width:560px){.cz-main{grid-template-columns:minmax(0,7em) minmax(40px,1fr) 2.4em;} .cz-main .tr{grid-column:1/-1;margin-left:0}}
+
 /* month view */
 .month-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .month-nav button,select{font:inherit;font-size:14px;border:1px solid var(--hair);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer}
@@ -297,7 +320,7 @@ const TABS = [["summary","핵심 요약"],["browse","순위 찾아보기"],["ste
 const SEASON_OF = m => m>=3&&m<=5?"봄":m>=6&&m<=8?"여름":m>=9&&m<=11?"가을":"겨울";
 const SEASONS = [["봄",[3,4,5]],["여름",[6,7,8]],["가을",[9,10,11]],["겨울",[12,1,2]]];
 
-const state = {g:"A", tab:"summary", month:M[M.length-1], cat:"all", bcat:"001", scat:"001", ball:false, bmore:new Set()}; // ball: 순위 찾아보기에서 그해 모든 달 보기, bmore: 30위까지 펼친 달
+const state = {g:"A", tab:"summary", month:M[M.length-1], cat:"all", bcat:"001", scat:"001", rcat:"001", ball:false, bmore:new Set()}; // ball: 순위 찾아보기에서 그해 모든 달 보기, bmore: 30위까지 펼친 달
 try{ const s = JSON.parse(localStorage.getItem("mra-state")||"{}"); if(s.g in GEN) state.g=s.g; }catch(e){}
 const h0 = (location.hash||"").slice(1); if(TABS.some(t=>t[0]===h0)) state.tab=h0;
 
@@ -337,6 +360,7 @@ document.addEventListener("click", e=>{
   const sc = e.target.closest("[data-scat]"); if(sc){ state.scat=sc.dataset.scat; render(); return; }
   const se = e.target.closest("[data-sea]"); if(se){ state.sea=se.dataset.sea; render(); return; }
   const sy = e.target.closest("[data-sy]"); if(sy){ state.sy=sy.dataset.sy; render(); return; }
+  const rc = e.target.closest("[data-rcat]"); if(rc){ state.rcat=rc.dataset.rcat; render(); return; }
   const sly = e.target.closest("[data-sly]"); if(sly){ state.sly=sly.dataset.sly; render(); return; }
   const mv = e.target.closest("[data-mstep]"); if(mv){ const i=M.indexOf(state.month)+(+mv.dataset.mstep); if(i>=0&&i<M.length){state.month=M[i]; render();} return; }
   const b = e.target.closest("[data-browse]"); if(b){ state.bcat=b.dataset.browse; go("browse"); return; }
@@ -508,6 +532,121 @@ function seasonRecBlock(){
   </div>`;
 }
 
+
+/* ---------- 카테고리별 옷 종류 분석 (무신사 랭킹 데이터만: 대분류 TOP 30 + 세부 카테고리 TOP 30) ---------- */
+const TYPE_GROUPS = ["silhouette","fit","texture","detail"];   // 옷 종류+디자인 조합에 쓰는 특징 (컬러는 보조 정보로만)
+const won = v => v==null ? "-" : v.toLocaleString("ko-KR")+"원";
+const manwon = v => (Math.round(v/1000)/10).toString().replace(/\.0$/,"")+"만";
+function median(a){ if(!a.length) return null; const b=[...a].sort((x,y)=>x-y), m=Math.floor(b.length/2); return b.length%2?b[m]:Math.round((b[m-1]+b[m])/2); }
+function quant(a,q){ if(!a.length) return null; const b=[...a].sort((x,y)=>x-y); return b[Math.min(b.length-1, Math.floor(q*(b.length-1)+0.5))]; }
+function subCode(cat, sub){ const e = Object.entries(D.categories).find(([,v])=>v.parent===cat && v.name===sub); return e ? e[0] : null; }
+// 계절·연도 → 달 번호들 (seasonRecs와 같은 규칙: 겨울 = 그해 1·2·12월)
+function periodIdx(seasonName, year){
+  const months = SEASONS.find(x=>x[0]===seasonName)[1];
+  const inS = (ym, y) => months.includes(+ym.slice(5)) && (y==="all" || ym.slice(0,4)===String(y));
+  const idx = M.map((ym,i)=>inS(ym, year)?i:-1).filter(i=>i>=0);
+  const before = year==="all" ? idx.slice(-6,-3) : M.map((ym,i)=>inS(ym, +year-1)?i:-1).filter(i=>i>=0);
+  const baseIdx = year==="all" ? idx.slice(-3) : idx;               // 비교할 때 '지금'
+  const fullBefore = before.length>0 && before.length===baseIdx.length;
+  return {idx, before, baseIdx, fullBefore};
+}
+// 순위표 가중치: 1위 30점 … 30위 1점, 달마다 더함
+function listWeights(code, idxs){ const w={}; idxs.forEach(i=>(((G().top[code]||{})[M[i]])||[]).forEach((id,r)=>{ w[id]=(w[id]||0)+(30-r); })); return w; }
+function tagShares(w){ // {group: {tag: 가중 비율}}
+  const tot = Object.values(w).reduce((a,b)=>a+b,0) || 1, out = {};
+  Object.entries(w).forEach(([id,v])=>{ const k=P(id).k||{}; Object.entries(k).forEach(([g,tags])=>tags.forEach(t=>{ (out[g]=out[g]||{})[t]=((out[g]||{})[t]||0)+v/tot; })); });
+  return out;
+}
+function redundant(tag, sub){ return tag.replace(/ 기장/g,"").split("/").some(part=>part && sub.includes(part.trim())); }
+function catTypeData(cat, seasonName, year){
+  const {idx, before, baseIdx, fullBefore} = periodIdx(seasonName, year);
+  const comp = (G().composition[cat]||{}).by_month || {};
+  const types = [];
+  Object.entries(comp).forEach(([sub, counts])=>{
+    if(sub==="기타") return;
+    const avg = mean(idx.map(i=>counts[i])); if(avg < 0.3) return;
+    const now = mean(baseIdx.map(i=>counts[i])), was = fullBefore ? mean(before.map(i=>counts[i])) : null;
+    const code = subCode(cat, sub);
+    const w = code ? listWeights(code, idx) : {};
+    const wPrev = code && fullBefore ? listWeights(code, before) : null;
+    const shares = tagShares(w), sharesPrev = wPrev ? tagShares(wPrev) : null;
+    const ids = Object.keys(w).sort((a,b)=>w[b]-w[a]);
+    const prices = ids.map(id=>P(id).p).filter(Boolean);
+    const brandW = {}; ids.forEach(id=>{ const b=P(id).b; brandW[b]=(brandW[b]||0)+w[id]; });
+    const brands = Object.entries(brandW).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([b])=>b);
+    const topTags = TYPE_GROUPS.flatMap(g=>Object.entries(shares[g]||{}).filter(([t])=>!redundant(t,sub)).map(([t,v])=>[t,v])).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([t])=>t);
+    const color = Object.entries(shares.color||{}).sort((a,b)=>b[1]-a[1])[0];
+    types.push({sub, code, avg, now, was, w, ids, shares, sharesPrev, prices, brands, topTags, color: color ? color[0] : null});
+  });
+  types.sort((a,b)=>b.avg-a.avg);
+  // ① 옷 종류 + 디자인 조합: 종류가 대분류 TOP 30에서 차지한 평균 자리 × 그 종류 세부 TOP 30 안에서 그 특징을 가진 비율(순위 가중)
+  const combos = [];
+  types.forEach(t=>{
+    const cands = [];
+    TYPE_GROUPS.forEach(g=>Object.entries(t.shares[g]||{}).forEach(([tag, share])=>{
+      if(share < 0.2 || redundant(tag, t.sub)) return;
+      const prev = t.sharesPrev ? ((t.sharesPrev[g]||{})[tag]||0) : null;
+      cands.push({g, tag, share, prev, est: t.avg*share});
+    }));
+    cands.sort((a,b)=>b.est-a.est).slice(0,2).forEach(c=>combos.push({...c, t}));
+  });
+  combos.sort((a,b)=>b.est-a.est);
+  const comboPicks = combos.slice(0,5).map(c=>{
+    const ids = c.t.ids.filter(id=>((P(id).k||{})[c.g]||[]).includes(c.tag));
+    const other = {}; ["silhouette","fit","texture","detail","color"].filter(g=>g!==c.g).forEach(g=>{
+      const cnt={}; let tot=0; ids.forEach(id=>{ ((P(id).k||{})[g]||[]).forEach(v=>{ cnt[v]=(cnt[v]||0)+c.t.w[id]; }); tot+=c.t.w[id]; });
+      const top = Object.entries(cnt).filter(([v,n])=>n>=tot*0.2 && !redundant(v,c.t.sub)).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([v])=>v);
+      if(top.length) other[g]=top;
+    });
+    return {...c, name: `${c.tag.replace(/ 기장$/,"")} ${c.t.sub}`, ids: ids.slice(0,4), prices: ids.map(id=>P(id).p).filter(Boolean), other};
+  });
+  // ② 개별 상품: 이 기간 대분류 TOP 30 순위 가중치 합, 판매 종료 제외, 한 종류에서 최대 2개
+  const wCat = listWeights(cat, idx), perSub = {}, prodPicks = [];
+  Object.keys(wCat).sort((a,b)=>wCat[b]-wCat[a]).forEach(id=>{
+    const q = P(id); if(q.x || prodPicks.length>=5) return;
+    if((perSub[q.s]||0) >= 2) return; perSub[q.s]=(perSub[q.s]||0)+1;
+    let months = 0, best = 99; idx.forEach(i=>{ const r=(((G().top[cat]||{})[M[i]])||[]).indexOf(id); if(r>=0){ months++; best=Math.min(best,r+1); } });
+    prodPicks.push({id, months, best, total: idx.length});
+  });
+  return {types, comboPicks, prodPicks, fullBefore, hasData: idx.length>0};
+}
+function catTypeBlock(){
+  const cur = state.sea || nextSeason();
+  const years = [...new Set(M.map(ym=>ym.slice(0,4)))];
+  const yr = state.sy && (state.sy==="all" || years.includes(state.sy)) ? state.sy : "all";
+  const cats = topCats(); if(!cats.some(([c])=>c===state.rcat)) state.rcat = cats[0][0];
+  const cat = state.rcat, catName = TOP[cat];
+  const d = catTypeData(cat, cur, yr);
+  const cmpWord = yr==="all" ? "작년 같은 시즌" : "전년 같은 계절";
+  const period = `${yr==="all"?"전체 기간":yr+"년"} ${cur}`;
+  const maxAvg = Math.max(1, ...d.types.map(t=>Math.max(t.avg, t.was||0)));
+  const tr = (now, was, unit) => was==null ? "" : Math.abs(now-was) < (unit==="%p"?3:0.5) ? `<span class="tr">${cmpWord}과 비슷</span>` : `<span class="tr ${now>was?"up":"down"}">${cmpWord}보다 ${now>was?"▲":"▼"}${unit==="%p"?Math.round(Math.abs(now-was)*100)+"%p":""}</span>`;
+  return `
+  <div class="block">
+    <div><div class="eyebrow">무신사 랭킹 데이터 · ${GEN[state.g]} · ${period}</div><h2>카테고리별 옷 종류 분석</h2><p class="lede">위에서 고른 계절·연도 기준입니다. 대분류 TOP 30에서 옷 종류마다 차지한 자리와, 그 종류의 세부 카테고리 TOP 30(예: 데님 팬츠 순위)에서 뽑은 디자인 특징·정가·브랜드를 함께 봅니다. 뉴스나 외부 자료는 쓰지 않았습니다.</p></div>
+    <div class="chips">${cats.map(([k,v])=>`<button type="button" data-rcat="${k}" aria-pressed="${cat===k}">${v}</button>`).join("")}</div>
+    ${!d.hasData ? `<p class="empty">${period} 자료가 아직 없습니다.</p>` : `
+    <div class="cz-card">
+      <h3>${catName} 옷 종류별 자리 (대분류 TOP 30 평균)</h3>
+      ${d.types.map(t=>`<div class="cz-row">
+        <div class="cz-main"><span class="cz-name">${esc(t.sub)}</span><span class="cz-bar"><i style="width:${(t.avg/maxAvg*100).toFixed(1)}%"></i>${t.was!=null?`<b style="left:${Math.min(100,t.was/maxAvg*100).toFixed(1)}%"></b>`:""}</span><span class="cz-val">${t.avg.toFixed(1)}</span>${tr(t.now, t.was, "")}</div>
+        <div class="cz-sub">${t.prices.length?`정가 중간 ${won(median(t.prices))} (${manwon(quant(t.prices,.25))}~${manwon(quant(t.prices,.75))})`:"정가 정보 없음"}${t.brands.length?` · ${t.brands.map(esc).join("·")}`:""}${t.topTags.length?` · ${t.topTags.map(esc).join("·")}`:""}${t.color?` · ${esc(t.color)}`:""}</div>
+      </div>`).join("")}
+      <p class="bfoot">막대 = 이 기간 평균 자리(30자리 중)${d.fullBefore?`, 세로 선 = ${cmpWord}`:""}. 정가 범위는 그 종류 세부 TOP 30 상품의 가운데 50%. 특징·브랜드는 세부 TOP 30에서 순위가 높을수록 크게 셈.</p>
+    </div>
+    <div><h3 class="cz-h">추천 옷 종류 5 — 종류 + 디자인 특징</h3><p class="bfoot">종류가 대분류 TOP 30에서 차지한 자리 × 그 종류 세부 TOP 30에서 그 특징을 가진 상품 비율(순위 가중)로 점수를 매겼습니다. 한 종류에서 최대 2개.</p></div>
+    ${d.comboPicks.length?`<ol class="recs">${d.comboPicks.map((c,k)=>`<li class="rec">
+      <div class="rhead"><span class="rk">${k+1}</span><div><h3>${esc(c.name)}</h3><div class="rmeta">${esc(c.t.sub)} 세부 TOP 30의 <b>${Math.round(c.share*100)}%</b>가 '${esc(c.tag)}' · 종류 평균 ${c.t.avg.toFixed(1)}자리 ${tr(c.share, c.prev, "%p")}</div></div></div>
+      <dl class="tags">${c.prices.length?`<div><dt>정가</dt><dd>중간 ${won(median(c.prices))}</dd></div>`:""}${Object.entries(c.other).map(([g,v])=>`<div><dt>${TAG_NAMES[g]}</dt><dd>${v.map(esc).join(" · ")}</dd></div>`).join("")}</dl>
+      <div class="rprods">${c.ids.map(id=>{const q=P(id); return `<a href="${url(id)}" target="_blank" rel="noreferrer" title="${esc(q.b+' '+q.n)}">${photo(id)}<span class="rb">${esc(q.b)}</span></a>`;}).join("")}</div>
+    </li>`).join("")}</ol>`:`<p class="empty">뚜렷한 조합이 없습니다.</p>`}
+    <div><h3 class="cz-h">추천 상품 5 — 이 기간 ${catName} TOP 30 성적순</h3><p class="bfoot">이 기간 대분류 TOP 30 순위를 점수로 더했습니다(1위 30점 … 30위 1점). 판매 종료 상품은 빼고, 한 종류에서 최대 2개.</p></div>
+    <ol class="cz-prods">${d.prodPicks.map((x,k)=>{const q=P(x.id); const kw=Object.entries(q.k||{}).flatMap(([,v])=>v).slice(0,4); return `<li><a href="${url(x.id)}" target="_blank" rel="noreferrer">${photo(x.id)}</a>
+      <div class="cz-pinfo"><span class="cz-rk">${k+1}</span><span class="pbrand">${esc(q.b)} · ${esc(q.s)}</span><a class="pname" href="${url(x.id)}" target="_blank" rel="noreferrer">${esc(q.n)}</a>
+      <span class="cz-pmeta">${x.months}/${x.total}개월 TOP 30 · 최고 ${x.best}위${q.p?` · 정가 ${won(q.p)}`:""}</span>${kw.length?`<span class="cz-kw">${kw.map(esc).join(" · ")}</span>`:""}</div></li>`;}).join("")}</ol>`}
+  </div>`;
+}
+
 // 세부 종류마다: 매년 특정 달에 몰리는지(시즌템), 1년 내내 있는지
 function seasonProfile(cat){
   const comp = G().composition[cat]; const seasonal = [], always = [];
@@ -549,7 +688,7 @@ function season(){
       shown.map(([s,n])=>`<div class="sb ${seasonalSet.has(s)?"is-season":alwaysSet.has(s)?"is-always":""}"><span class="sl">${esc(s)}</span><span class="strack"><i style="width:${(n/30*100).toFixed(0)}%"></i></span><span class="sn">${n}</span></div>`).join("")
     }</div>${rest.length?`<div class="more">그 외 ${rest.length}종 ${restN}개</div>`:""}</div></div>`;
   }).join("");
-  return `${seasonRecBlock()}
+  return `${seasonRecBlock()}${catTypeBlock()}
   <div class="block">
     <div><h2>종류별 시즌 흐름</h2><p class="lede">대분류 TOP 30을 어떤 종류의 옷이 채웠는지 셌습니다. 위에는 매년 돌아오는 시즌템과 1년 내내 있는 옷을 요약했고, 아래에는 달마다 가장 많이 들어간 종류 4개를 적었습니다. 막대 길이는 30자리 중 몇 자리인지입니다.</p></div>
     <div class="chips">${cats.map(([k,v])=>`<button type="button" data-scat="${k}" aria-pressed="${cat===k}">${v}</button>`).join("")}</div>
