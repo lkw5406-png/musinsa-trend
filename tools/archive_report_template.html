@@ -289,6 +289,7 @@ const M = D.months;
 const TOP_ORDER = [["001","상의"],["002","아우터"],["003","바지"],["100","원피스/스커트"]];
 const TOP = Object.fromEntries(TOP_ORDER);
 const GEN = {A:"전체",M:"남성",F:"여성"};
+const ALL_CODE = "000"; // 품목 통합 전체 랭킹 중 의류만 (순위는 무신사 전체 순위 그대로). 순위 찾아보기에서만 씀
 const TABS = [["summary","핵심 요약"],["browse","순위 찾아보기"],["steady","꾸준템"],["season","시즌 캘린더"],["month","월별 흐름"],["brand","브랜드 랭킹"]];
 const SEASON_OF = m => m>=3&&m<=5?"봄":m>=6&&m<=8?"여름":m>=9&&m<=11?"가을":"겨울";
 const SEASONS = [["봄",[3,4,5]],["여름",[6,7,8]],["가을",[9,10,11]],["겨울",[12,1,2]]];
@@ -327,7 +328,7 @@ function chrome(){
   document.getElementById("facts").innerHTML = `<span><b>${M.length}</b>개월</span><span>성별 <b>3</b>개(전체·남·여)</span><span>카테고리 <b>${nCats}</b>개(대분류 4 + 세부)</span><span>대분류 TOP 30에 오른 상품 <b>${nProducts.toLocaleString()}</b>개</span>`;
 }
 document.addEventListener("click", e=>{
-  const g = e.target.closest("[data-g]"); if(g){ state.g=g.dataset.g; if(!topCats().some(([c])=>c===state.bcat||D.categories[state.bcat]?.parent===c)) state.bcat="001"; if(state.cat!=="all"&&!topCats().some(([c])=>c===state.cat)) state.cat="all"; try{localStorage.setItem("mra-state",JSON.stringify({g:state.g}))}catch(_){} chrome(); render(); return; }
+  const g = e.target.closest("[data-g]"); if(g){ state.g=g.dataset.g; if(state.bcat!==ALL_CODE&&!topCats().some(([c])=>c===state.bcat||D.categories[state.bcat]?.parent===c)) state.bcat="001"; if(state.cat!=="all"&&!topCats().some(([c])=>c===state.cat)) state.cat="all"; try{localStorage.setItem("mra-state",JSON.stringify({g:state.g}))}catch(_){} chrome(); render(); return; }
   const t = e.target.closest("[data-tab]"); if(t){ e.preventDefault(); go(t.dataset.tab); return; }
   const c = e.target.closest("[data-cat]"); if(c){ state.cat=c.dataset.cat; render(); return; }
   const se = e.target.closest("[data-sea]"); if(se){ state.sea=se.dataset.sea; render(); return; }
@@ -680,6 +681,13 @@ function brand(){
 
 // 한 달치 순위표 (등락은 바로 전달과 비교). limit이 있으면 그 줄까지만 + '30위까지 보기' 버튼
 function rankTable(ym, limit){
+  const row = (id, rank, st="", cls="") => { const q=P(id); return `<div class="rrow"><span class="r">${rank}</span>${photo(id)}<span><a href="${url(id)}" target="_blank" rel="noreferrer" style="text-decoration:none">${esc(q.n)}</a><br><span class="pbrand">${esc(q.b)}${q.x?" · 판매 종료":""}</span>${q.p?`<span class="rprice">정가 ${q.p.toLocaleString("ko-KR")}원</span>`:""}</span><span class="st ${cls}">${st}</span></div>`; };
+  if(state.bcat===ALL_CODE){ // 전체 랭킹: 의류만, 순위와 아이템만 (등락 표시 없음)
+    const all = (G().overall||{})[ym]||[], list = limit ? all.slice(0, limit) : all;
+    const toggle = state.ball && all.length > 10
+      ? `<button type="button" class="bmore-btn" data-bmore="${ym}">${limit ? `의류 ${all.length}개 모두 보기 ›` : "10개만 보기 ‹"}</button>` : "";
+    return list.length?`<div class="rank-table">${list.map(([rank,id])=>row(id, rank)).join("")}</div>${toggle}`:`<p class="empty">이 달 전체 랭킹 TOP 30에는 의류가 없습니다.</p>`;
+  }
   const i = M.indexOf(ym), prev = i>0?M[i-1]:null, byMonth = G().top[state.bcat]||{};
   const all = byMonth[ym]||[];
   const ids = limit ? all.slice(0, limit) : all;
@@ -687,16 +695,16 @@ function rankTable(ym, limit){
     ? `<button type="button" class="bmore-btn" data-bmore="${ym}">${limit ? `${all.length}위까지 보기 ›` : "10위까지 접기 ‹"}</button>` : "";
   const prevIds = prev?(byMonth[prev]||[]):null;
   const seenBefore = id => M.slice(0,i).some(m=>(byMonth[m]||[]).includes(id));
-  return ids.length?`<div class="rank-table">${ids.map((id,k)=>{const q=P(id); let st="", cls=""; if(prevIds){ const pi=prevIds.indexOf(id); if(pi<0){ if(seenBefore(id)){st="재진입";cls="re";} else {st="신규";cls="new";} } else { const d=pi-k; st=d>0?`▲${d}`:d<0?`▼${-d}`:"–"; cls=d>=10?"up":""; } } return `<div class="rrow"><span class="r">${k+1}</span>${photo(id)}<span><a href="${url(id)}" target="_blank" rel="noreferrer" style="text-decoration:none">${esc(q.n)}</a><br><span class="pbrand">${esc(q.b)}${q.x?" · 판매 종료":""}</span>${q.p?`<span class="rprice">정가 ${q.p.toLocaleString("ko-KR")}원</span>`:""}</span><span class="st ${cls}">${st}</span></div>`;}).join("")}</div>${toggle}`:`<p class="empty">이 달·카테고리는 무신사 아카이브에 순위가 없습니다.</p>`;
+  return ids.length?`<div class="rank-table">${ids.map((id,k)=>{let st="", cls=""; if(prevIds){ const pi=prevIds.indexOf(id); if(pi<0){ if(seenBefore(id)){st="재진입";cls="re";} else {st="신규";cls="new";} } else { const d=pi-k; st=d>0?`▲${d}`:d<0?`▼${-d}`:"–"; cls=d>=10?"up":""; } } return row(id, k+1, st, cls);}).join("")}</div>${toggle}`:`<p class="empty">이 달·카테고리는 무신사 아카이브에 순위가 없습니다.</p>`;
 }
 
 function browse(){
   const ym = state.month, yr = ym.slice(0,4), yearMonths = M.filter(m=>m.startsWith(yr));
   const cats = D.categories;
-  const opts = topCats().map(([code,name])=>`<optgroup label="${name}"><option value="${code}" ${state.bcat===code?"selected":""}>${name} 전체</option>${Object.entries(cats).filter(([,c])=>c.parent===code).map(([sc,c])=>`<option value="${sc}" ${state.bcat===sc?"selected":""}>${esc(c.name)}</option>`).join("")}</optgroup>`).join("");
+  const opts = (G().overall?`<option value="${ALL_CODE}" ${state.bcat===ALL_CODE?"selected":""}>전체 랭킹 (품목 통합 · 의류만)</option>`:"") + topCats().map(([code,name])=>`<optgroup label="${name}"><option value="${code}" ${state.bcat===code?"selected":""}>${name} 전체</option>${Object.entries(cats).filter(([,c])=>c.parent===code).map(([sc,c])=>`<option value="${sc}" ${state.bcat===sc?"selected":""}>${esc(c.name)}</option>`).join("")}</optgroup>`).join("");
   return `
   <div class="block">
-    <div><h2>순위 찾아보기</h2><p class="lede">달·카테고리를 골라 무신사 월간 TOP 30 전체를 봅니다. 세부 카테고리(니트, 패딩, 데님 팬츠 등)도 고를 수 있고, 달에서 '전체'를 고르면 그해 1~12월의 달마다 TOP 10을 이어서 보여 주고, '30위까지 보기'로 펼칩니다.</p>${(D.price_dates||[]).length?`<p class="bfoot">정가: ${D.price_dates[1].slice(0,4)}년 ${+D.price_dates[1].slice(5,7)}월 무신사 상품 페이지 조회 기준(그 달 당시 가격이 아님). 아직 받지 못한 상품은 비어 있습니다.</p>`:""}</div>
+    <div><h2>순위 찾아보기</h2><p class="lede">달·카테고리를 골라 무신사 월간 TOP 30 전체를 봅니다. 카테고리 맨 위 '전체 랭킹'은 품목을 나누지 않은 무신사 전체 TOP 30에서 옷만 남긴 것입니다. 순위는 무신사 전체 순위 그대로라서, 신발·가방·소품이 있던 자리는 비어 있고 달마다 개수가 다릅니다. 세부 카테고리(니트, 패딩, 데님 팬츠 등)도 고를 수 있고, 달에서 '전체'를 고르면 그해 1~12월의 달마다 TOP 10을 이어서 보여 주고, '30위까지 보기'로 펼칩니다.</p>${(D.price_dates||[]).length?`<p class="bfoot">정가: ${D.price_dates[1].slice(0,4)}년 ${+D.price_dates[1].slice(5,7)}월 무신사 상품 페이지 조회 기준(그 달 당시 가격이 아님). 아직 받지 못한 상품은 비어 있습니다.</p>`:""}</div>
     <div class="filters">
       <select id="byear" aria-label="연도">${[...new Set(M.map(m=>m.slice(0,4)))].map(y=>`<option value="${y}" ${ym.startsWith(y)?"selected":""}>${y}년</option>`).join("")}</select>
       <select id="bmonth" aria-label="달"><option value="all" ${state.ball?"selected":""}>전체</option>${yearMonths.map(m=>`<option value="${m}" ${!state.ball&&m===ym?"selected":""}>${+m.slice(5)}월</option>`).join("")}</select>

@@ -46,7 +46,7 @@
 ## 순서와 Tool
 | 단계 | Tool | 결과물 |
 |---|---|---|
-| 1. 수집 | `python tools/musinsa_archive.py` (이미 받은 달은 건너뜀, `--force`로 다시) | `data/archive_monthly/YYYY-MM.csv` |
+| 1. 수집 | `python tools/musinsa_archive.py` (이미 받은 달은 건너뜀, `--force`로 다시) | `data/archive_monthly/YYYY-MM.csv` + 품목 통합 전체 랭킹 `data/archive_overall/YYYY-MM.csv` (페이지에는 이 중 의류만, 무신사 전체 순위 숫자 그대로 — 2026-10-07 사장님 결정. 이 파일만 없는 달은 알아서 채움) |
 | 1-2. 정가 | `python tools/archive_prices.py` (백그라운드, 이어받기) | `data/archive_prices.json` |
 | 2. 분석 | `python tools/analyze_archive.py` | `.tmp/archive_analysis.json` |
 | 3. 원인 조사 (Claude) | 웹 검색 · 무신사 월간 랭킹 콘텐츠 | `data/archive_reasons.json` |

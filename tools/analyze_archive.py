@@ -7,6 +7,10 @@ data/archive_monthly/YYYY-MM.csv (musinsa_archive.py) 전부를 읽어 .tmp/arch
 - 꾸준템: 대분류 TOP 30에 든 달 수, 최장 연속 달 수, 최고 순위
 - 시즌템: 대분류 TOP 30 안의 세부 종류 구성(달마다 몇 개) + 달력 월(1~12월) 평균 → 매년 반복되는지
 - 월별 변화: 신규 진입(처음 등장) · 재진입 · 순위 급상승 → Claude가 원인 조사할 후보 (notable)
+- 품목 통합 전체 랭킹(data/archive_overall)은 의류만 남겨 순위 찾아보기 목록에만 쓴다 (overall).
+  의류 = 의류 카테고리 순위(archive_monthly)에 한 번이라도 나온 상품. 신발·가방·양말·뷰티 등은 빠지고,
+  순위 숫자는 무신사 전체 순위 그대로 둔다(그래서 중간이 빈다). 꾸준템·시즌·브랜드 분석에는 넣지 않는다.
+  (2026-10-07 사장님 결정: 의류만, 순위와 아이템만 보이게)
 - 상품명 키워드: 핏·실루엣·원단·디테일·컬러 (tools/attribute_keywords.json 재사용)
 
 사용법: python tools/analyze_archive.py
@@ -20,6 +24,7 @@ import classify_attributes
 from common import ROOT, TMP_DIR
 
 ARCHIVE_DIR = ROOT / "data" / "archive_monthly"
+OVERALL_DIR = ROOT / "data" / "archive_overall"
 OUT_PATH = TMP_DIR / "archive_analysis.json"
 TOP_CATS = {"001": "상의", "002": "아우터", "003": "바지", "100": "원피스/스커트"}
 GENDERS = {"A": "전체", "M": "남성", "F": "여성"}
@@ -27,9 +32,9 @@ KEYWORD_GROUPS = ("fit", "silhouette", "texture", "detail", "color")
 NOTABLE_PER_MONTH = 12  # 성별마다 달마다 원인 조사 후보 수
 
 
-def load_rows() -> tuple[list[str], list[dict]]:
+def load_rows(folder=ARCHIVE_DIR) -> tuple[list[str], list[dict]]:
     months, rows = [], []
-    for path in sorted(ARCHIVE_DIR.glob("*.csv")):
+    for path in sorted(folder.glob("*.csv")):
         months.append(path.stem)
         with open(path, encoding="utf-8-sig", newline="") as f:
             for r in csv.DictReader(f):
@@ -182,6 +187,16 @@ def monthly_top(months: list[str], table: dict, gender: str, n: int = 30) -> dic
     return dict(out)
 
 
+def overall_apparel(months: list[str], products: dict, gender: str) -> dict:
+    """달 → [[무신사 전체 순위, 상품번호]] — 품목 통합 전체 랭킹 TOP 30 중 의류만"""
+    _, rows = load_rows(OVERALL_DIR)
+    out = defaultdict(list)
+    for r in sorted(rows, key=lambda r: r["rank"]):
+        if r["gender"] == gender and r["year_month"] in months and r["product_id"] in products:
+            out[r["year_month"]].append([r["rank"], r["product_id"]])
+    return dict(out)
+
+
 def analyze() -> dict:
     months, rows = load_rows()
     if not months:
@@ -201,6 +216,7 @@ def analyze() -> dict:
             "brands": brand_trends(months, hist, products),
             "notable": notable(months, hist, g),
             "top": monthly_top(months, table, g),
+            "overall": overall_apparel(months, products, g),
         }
     return result
 

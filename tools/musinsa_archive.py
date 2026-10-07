@@ -5,6 +5,9 @@
 
 - 의류만: 상의 001, 아우터 002, 바지 003, 원피스/스커트 100 + 그 아래 세부 카테고리 전부
   (2026-09-28 사장님 결정: 대분류 + 세부, 전체·남성·여성, 2024-01부터. 가방·모자는 넣었다가 같은 날 뺌)
+- 품목 통합 전체 랭킹(무신사 카테고리 000, 신발·가방·뷰티 등 의류 아닌 것도 섞임)은 따로 저장한다:
+  data/archive_overall/YYYY-MM.csv (2026-10-07 사장님 요청: 순위 찾아보기에 전체 랭킹 추가).
+  의류 분석(꾸준템·시즌 등)에 섞이지 않게 폴더를 나눴다. 이 파일만 없는 달은 이것만 받아 채운다.
 - 세부 카테고리 목록은 달·성별마다 무신사가 알려주는 목록(categories)을 그대로 따른다.
 - 지난 달 순위는 바뀌지 않으므로 이미 저장된 달은 건너뛴다 (--force로 다시 받기).
 - 봇 위장 없음: 정직한 User-Agent, 요청 사이 고정 간격. 차단(401/403/429)되면 바로 멈춘다.
@@ -25,6 +28,8 @@ from common import KST, ROOT, USER_AGENT, BlockedError
 
 API = "https://api.musinsa.com/api2/dp/v1/ranking-archive/{kind}"
 ARCHIVE_DIR = ROOT / "data" / "archive_monthly"
+OVERALL_DIR = ROOT / "data" / "archive_overall"
+OVERALL_CODE, OVERALL_NAME = "000", "전체 랭킹"
 REQUEST_INTERVAL_SEC = 1.5
 FIRST_MONTH = "2024-01"  # 아카이브 시작 (2026-09-28 확인: 2023-12 이전은 '정보가 존재하지 않습니다')
 
@@ -101,28 +106,36 @@ def target_categories(ym: str, gender: str) -> list[tuple[str, str, str, str]]:
     return cats
 
 
+def goods_rows(ym: str, gender: str, code: str, name: str, parent: str, parent_name: str) -> list[dict]:
+    data = request("goods", {"yearMonth": ym.replace("-", ""), "gf": gender, "category": code})
+    return [{
+        "year_month": ym, "gender": gender,
+        "category_code": code, "category_name": name,
+        "parent_code": parent, "parent_name": parent_name,
+        "rank": item.get("rank"), "product_id": item.get("goodsNo"),
+        "brand": item.get("brand", ""), "brand_name": item.get("brandName", ""),
+        "product_name": item.get("goodsName", ""), "image_url": item.get("imageUrl", ""),
+        "discontinued": item.get("isPermanentStopped", False),
+    } for item in (data or {}).get("list", []) or []]
+
+
 def collect_month(ym: str) -> list[dict]:
     rows = []
     for gender in GENDERS:
         for code, name, parent, parent_name in target_categories(ym, gender):
-            data = request("goods", {"yearMonth": ym.replace("-", ""), "gf": gender, "category": code})
-            for item in (data or {}).get("list", []) or []:
-                rows.append({
-                    "year_month": ym, "gender": gender,
-                    "category_code": code, "category_name": name,
-                    "parent_code": parent, "parent_name": parent_name,
-                    "rank": item.get("rank"), "product_id": item.get("goodsNo"),
-                    "brand": item.get("brand", ""), "brand_name": item.get("brandName", ""),
-                    "product_name": item.get("goodsName", ""), "image_url": item.get("imageUrl", ""),
-                    "discontinued": item.get("isPermanentStopped", False),
-                })
+            rows += goods_rows(ym, gender, code, name, parent, parent_name)
         print(f"  {ym} {GENDERS[gender]}: 누적 {len(rows)}행")
     return rows
 
 
-def save_csv(rows: list[dict], ym: str):
-    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    path = ARCHIVE_DIR / f"{ym}.csv"
+def collect_overall(ym: str) -> list[dict]:
+    """품목 통합 전체 랭킹 TOP 30 (성별 3개)"""
+    return [r for gender in GENDERS for r in goods_rows(ym, gender, OVERALL_CODE, OVERALL_NAME, "", "")]
+
+
+def save_csv(rows: list[dict], ym: str, folder=ARCHIVE_DIR):
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{ym}.csv"
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
         writer.writeheader()
@@ -131,6 +144,7 @@ def save_csv(rows: list[dict], ym: str):
 
 
 def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # 한글 Windows 콘솔(cp949)에서 '—' 출력 오류 방지
     parser = argparse.ArgumentParser()
     parser.add_argument("--from", dest="start", default=FIRST_MONTH)
     parser.add_argument("--to", dest="end", default=last_finished_month())
@@ -138,6 +152,12 @@ def main() -> int:
     args = parser.parse_args()
 
     for ym in month_range(args.start, args.end):
+        if not (OVERALL_DIR / f"{ym}.csv").exists() or args.force:
+            rows = collect_overall(ym)
+            if len(rows) < 60:  # 3성별 × 30 = 90이 정상
+                print(f"{ym}: 전체 랭킹이 {len(rows)}행뿐 — 저장 안 함")
+            else:
+                print(f"{ym}: 전체 랭킹 저장 {save_csv(rows, ym, OVERALL_DIR)} ({len(rows)}행)")
         path = ARCHIVE_DIR / f"{ym}.csv"
         if path.exists() and not args.force:
             print(f"{ym}: 이미 있음 — 건너뜀")
