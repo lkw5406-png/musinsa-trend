@@ -149,6 +149,9 @@ def channel_api(ch: str, kws: list[str]) -> list[str]:
     ids = [it["contentDetails"]["videoId"] for it in
            api("playlistItems", part="contentDetails", playlistId=uploads, maxResults=MAX_RESULTS).get("items", [])]
     out = [f"{c['snippet']['title']} (채널 {c['id']})"]
+    if not ids:
+        # 핸들(@이름)이 영상 없는 빈 채널을 가리키는 경우가 있음 (2026-10-08 @쩡혁) — 그 사람 영상 하나를 video로 열어 진짜 채널 번호를 찾을 것
+        out.append("  (이 채널엔 공개 영상이 0개 — 동명 빈 채널일 수 있음. 그 사람 영상을 video로 열어 채널 번호를 확인해 다시)")
     for v in video_details(ids):
         out.append("\n" + video_line(v))
         if kws:
