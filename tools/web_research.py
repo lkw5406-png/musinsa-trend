@@ -136,7 +136,8 @@ def video_api(vid: str, kws: list[str]) -> list[str]:
     if not items:
         return [f"{vid}: 영상을 못 찾음 (비공개·삭제)"]
     v = items[0]
-    return [video_line(v).strip()] + desc_lines(v["snippet"].get("description", ""), kws, None) + owner_comments(v, kws)
+    # 채널 번호도 보여 줌 — 핸들(@이름)이 동명 다른 채널을 잡는 일이 있어 이 번호로 `channel` 조회 (2026-10-09)
+    return [video_line(v).strip() + f" | 채널 {v['snippet']['channelId']}"] + desc_lines(v["snippet"].get("description", ""), kws, None) + owner_comments(v, kws)
 
 
 def channel_api(ch: str, kws: list[str]) -> list[str]:
