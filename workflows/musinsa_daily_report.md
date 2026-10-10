@@ -53,7 +53,7 @@
 - 순서:
   1. `git pull --rebase`
   2. `python tools/photo_queue.py --check` → 오늘 남은 개수
-  3. `python tools/photo_queue.py --next --size 27` → `.tmp/photo_queue.json` + 9장씩 묶은 판독용 이미지 `.tmp/photo_sheet_N.jpg` (Pillow 필요: PC는 `uv run --with pillow python …`, 클라우드는 `pip install pillow`. 없으면 `.tmp/photos/`의 사진을 하나씩 봄)
+  3. `python tools/photo_queue.py --next --size 27` → `.tmp/photo_queue.json` + 9장씩 묶은 판독용 이미지 `.tmp/photo_sheet_N.jpg` (Pillow 필요: PC는 `uv run --with pillow python …`, 클라우드는 `python3 -m pip install pillow` — 그냥 `pip`은 다른 파이썬에 깔려 Pillow를 못 찾음(2026-10-11). 없으면 `.tmp/photos/`의 사진을 하나씩 봄)
   4. 사진을 보고 `.tmp/photo_batchN.json` 작성 `{"상품번호": {"detail": ["포켓/유틸리티"], "texture": ["트윌/치노"]}}` — **빈 칸(blanks)으로 나온 그룹만**, 이름은 `tools/attribute_keywords.json` 이름표만. 디테일이 없으면 `무지/베이직`, 상의·아우터 기장이 평범하면 `레귤러 기장`(짧으면 `크롭`, 하프 코트는 `미디 기장`). 핏·실루엣·디테일·컬러는 파악률 100%를 위해 **반드시 하나는 고름** — `[]`(봤지만 모름 → 다시 안 고름, 빈칸으로 남음)는 소재처럼 사진으로 알 수 없는 칸에만. 소재는 사진으로 확정 불가 → 추정(폴리에스터는 이름표에 없음 → `[]`).
   5. `python tools/photo_queue.py --merge .tmp/photo_batchN.json` (이름표 밖이면 거부 → 고쳐서 다시)
   6. 3~5 반복 (한 번 실행에 최대 150개, 순위 높은 순. 넘치면 다음 날 이어서)
