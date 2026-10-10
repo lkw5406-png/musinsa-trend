@@ -180,6 +180,12 @@ tr.why-row td { padding-top: 10px; padding-bottom: 18px; }
 .why { font-size: 14.5px; color: var(--ink-2); line-height: 1.7; max-width: 80ch; border-left: 2px solid var(--up-text);
   padding: 4px 0 4px 12px; }
 .why.none { color: var(--muted); border-left-color: var(--grid); }
+.why-pts { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 5px; color: var(--ink); line-height: 1.55; }
+.why-pts li::marker { color: var(--muted); }
+.why-full { margin-top: 8px; font-size: 13.5px; }
+.why-full summary { cursor: pointer; color: var(--muted); width: fit-content; }
+.why-full summary:hover { color: var(--ink); }
+.why-full p { margin: 6px 0 0; color: var(--ink-2); line-height: 1.65; }
 .why .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .why .tag { font-size: 13px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--chip); color: var(--ink); }
 .why .conf { font-size: 13px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
@@ -232,6 +238,51 @@ section.card .brief .sub { margin: 10px 0 6px; padding-left: 1.1em; display: fle
 .brief .conf { font-size: 12.5px; font-weight: 600; padding: 0 6px; border-radius: 999px; border: 1px solid var(--border);
   color: var(--muted); white-space: nowrap; }
 .brief .conf.ok { color: var(--up-text); border-color: var(--up-text); }
+/* 오늘 요약 새 구성 (bf-): 번호 붙은 구역 + 사진 카드. 위의 .brief는 지난 날짜 페이지용으로 남김 */
+.bf { display: flex; flex-direction: column; }
+.bf-sec { padding: 28px 0; border-top: 1px solid var(--grid); }
+.bf-sec:first-child { padding-top: 8px; border-top: 0; }
+.bf-sec:last-child { padding-bottom: 4px; }
+section.card .bf-h { display: flex; align-items: center; gap: 10px; font-size: 20px; line-height: 1.35; margin: 0 0 4px; }
+.bf-n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 15px;
+  font-weight: 700; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.bf-hint { font-size: 14.5px; line-height: 1.6; color: var(--muted); margin: 0 0 0 38px; max-width: 70ch; }
+.bf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); gap: 12px; margin-top: 16px; }
+.bf-card { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px 14px; align-items: start; align-content: start;
+  padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--page); color: inherit;
+  text-decoration: none; min-width: 0; }
+a.bf-card:hover { border-color: var(--accent); }
+.bf-card img { width: 76px; height: 91px; object-fit: cover; border-radius: 8px; background: var(--grid); display: block; }
+.bf-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bf-brand { font-size: 13.5px; color: var(--muted); }
+.bf-name { font-size: 16px; font-weight: 700; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; }
+.bf-stat { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; font-size: 14px; color: var(--ink-2); }
+.bf-stat b { font-size: 22px; line-height: 1.25; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bf-stat b.up-t { color: var(--up-text); }
+.bf-meta { font-size: 14px; color: var(--ink-2); }
+.bf-meter { grid-column: 1 / -1; height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.bf-meter span { display: block; height: 100%; background: var(--bar); border-radius: 4px; }
+.bf-why { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--axis); font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+.bf-wait { color: var(--muted); }
+.bf .conf { font-size: 12.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--muted); white-space: nowrap; }
+.bf .conf.ok { color: var(--up-text); border-color: var(--up-text); }
+.bf-specs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13.5px; color: var(--muted); }
+.bf-spec { border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; background: var(--surface); color: var(--ink-2); }
+.bf-spec b { color: var(--ink); font-weight: 600; }
+.bf-brands { display: flex; flex-direction: column; margin-top: 12px; max-width: 760px; }
+.bf-brow { display: grid; grid-template-columns: minmax(0, 11em) minmax(60px, 1fr) 3.6em 3em; gap: 4px 12px; align-items: center;
+  padding: 12px 0; border-top: 1px solid var(--grid); font-size: 16px; }
+.bf-brow:first-child { border-top: 0; }
+.bf-bt { height: 14px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.bf-bt span { display: block; height: 100%; background: var(--bar); border-radius: 4px; }
+.bf-bv { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bf-brow small { grid-column: 1 / -1; font-size: 13.5px; color: var(--muted); }
+.bf-go { font: inherit; font-size: 15px; font-weight: 600; color: var(--accent); background: none; border: 0; min-height: 44px;
+  padding: 0; margin-top: 8px; cursor: pointer; }
+.bf-go:hover { text-decoration: underline; }
+.bf-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 아이템 순위표 */
 .rt td { white-space: nowrap; }
 .rt td:nth-child(3) { white-space: normal; min-width: 110px; }
@@ -274,6 +325,8 @@ footer p { margin: 0 0 8px; }
   .arow { grid-template-columns: 76px 1fr; }
   .gallery { grid-template-columns: repeat(3, 1fr); }
   .gswitch button { padding: 0 14px; }
+  .bf-hint { margin-left: 0; }
+  .bf-brow { grid-template-columns: minmax(0, 7.5em) minmax(40px, 1fr) 3.4em 2.8em; gap: 4px 8px; }
   .tabs { flex-basis: 100%; }
 }
 """
@@ -305,6 +358,7 @@ function toTop() { const h = document.querySelector('header'); const y = h.offse
 G.forEach(b => b.addEventListener('click', () => { curG = b.dataset.g; apply(true); }));
 T.forEach(b => b.addEventListener('click', () => { curT = b.dataset.t; apply(true); toTop();
   b.scrollIntoView({block: 'nearest', inline: 'nearest'}); }));
+document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { curT = b.dataset.goto; apply(true); toTop(); }));
 let saved = null; try { saved = localStorage.getItem('mss-view'); } catch (e) {}
 fromHash(location.hash) || fromHash(saved);
 apply(false);
@@ -442,7 +496,15 @@ def why_html(why: dict | None) -> str:
     conf = (f"<span class='conf{' ok' if ok else ''}' title='"
             f"{'출처로 원인을 직접 확인함' if ok else '직접 증거는 못 찾았고 정황상 가장 그럴듯한 원인'}'>{e(why['confidence'])}</span>")
     src = " · ".join(f"<a href='{e(s['url'])}' target='_blank' rel='noopener'>{e(s['title'])}</a>" for s in why["sources"])
-    return (f"<div class='why'><div class='tags'>{tags}{conf}</div>{e(why['reason'])}"
+    # 긴 문단 대신 짧은 항목으로 (2026-10-11 사장님). points가 없는 예전 기록은 문장 단위로 나눠 보여 줌
+    points = why.get("points")
+    if points:
+        full = f"<details class='why-full'><summary>조사 내용 전체 보기</summary><p>{e(why['reason'])}</p></details>"
+    else:
+        points = [x.strip().rstrip(".") for x in re.split(r"(?<=[가-힣\)])\.\s+", why["reason"]) if x.strip()]
+        full = ""
+    body = "<ul class='why-pts'>" + "".join(f"<li>{e(x)}</li>" for x in points) + "</ul>"
+    return (f"<div class='why'><div class='tags'>{tags}{conf}</div>{body}{full}"
             + (f"<div class='src'>출처: {src}</div>" if src else "") + "</div>")
 
 
@@ -604,28 +666,61 @@ def _sub(items: list[str]) -> str:
     return "<ul class='sub'>" + "".join(f"<li>{x}</li>" for x in items) + "</ul>"
 
 
+def _bf_img(url: str) -> str:
+    return f"<img src='{e(url)}' alt='' loading='lazy' referrerpolicy='no-referrer'>"
+
+
+def _bf_sec(no: int, title: str, hint: str, body: str) -> str:
+    hint_html = f"<p class='bf-hint'>{hint}</p>" if hint else ""
+    return (f"<section class='bf-sec'><h3 class='bf-h'><span class='bf-n'>{no}</span>{title}</h3>"
+            f"{hint_html}{body}</section>")
+
+
+def _bf_product(p: dict, stat: str, extra: str = "") -> str:
+    """상품 카드 한 장: 사진 + 브랜드 + 상품명 + 핵심 숫자 줄(stat) + 덧붙임(extra)."""
+    return (f"<a class='bf-card' href='{e(p['product_url'])}' target='_blank' rel='noopener'>{_bf_img(p['image_url'])}"
+            f"<div class='bf-body'><span class='bf-brand'>{e(p['brand'])}</span>"
+            f"<span class='bf-name'>{e(p['product_name'])}</span>"
+            f"<div class='bf-stat'>{stat}</div>{extra}</div></a>")
+
+
 def brief_lines(g: dict) -> str:
-    """오늘 요약: 회의에 그대로 옮겨 쓸 수 있는 문장 몇 줄.
+    """오늘 요약: 번호 붙은 구역마다 사진 카드로 (2026-10-11 사장님: 글머리 목록은 읽기 어려움).
     전 카테고리를 합친 컬러·원단·가격은 실무에 안 맞아 뺌 (2026-09-27 사장님) — 상품·브랜드·아이템 단위로."""
     types = sorted(g.get("item_types", []), key=lambda t: -t["share"])
     labels = dict(PROFILE_ROWS)
-    lines = []
+    secs = []
+
+    def type_card(t: dict, stat: str, extra: str = "") -> str:
+        first = t["top_products"][0] if t.get("top_products") else None
+        return (f"<div class='bf-card'>{_bf_img(first['image_url']) if first else '<span></span>'}"
+                f"<div class='bf-body'><span class='bf-brand'>{e(t['category_name'])}</span>"
+                f"<span class='bf-name'>{e(t['name'])}</span><div class='bf-stat'>{stat}</div></div>{extra}</div>")
+
     if types:
-        rest = ", ".join(e(t["name"]) for t in types[1:3])
-        lines.append(f"가장 인기 있는 아이템은 <b>{e(types[0]['name'])}</b>(인기 비중 {types[0]['share']:.0f}%)"
-                     + (f", 이어서 {rest}." if rest else "."))
+        top = types[:3]
+        scale = top[0]["share"] or 1
+        cards = "".join(type_card(
+            t, f"<b>{t['share']:.0f}%</b><span>인기 비중 · 상품 {t['count']}개</span>",
+            f"<div class='bf-meter' title='인기 비중'><span style='width:{100 * t['share'] / scale:.0f}%'></span></div>")
+            for t in top)
+        secs.append(("가장 인기 있는 아이템", "인기 비중이 가장 큰 아이템 3개예요.", f"<div class='bf-grid'>{cards}</div>"))
     rising = sorted((t for t in types if (t.get("dod_pp") or 0) >= 0.5), key=lambda t: -t["dod_pp"])[:3]
     if rising:
-        specs = [f"<b>{e(t['name'])}</b>에서 늘어난 스펙: " + " · ".join(
-                     f"{e(labels[s['group']])} {swatch(s['name']) if s['group'] == 'color' else ''}<b>{e(s['name'])}</b> "
-                     f"<span class='up-t'>+{s['gain']:.0f}%p</span>" for s in t["spec_changes"])
-                 for t in rising if t.get("spec_changes")]
-        lines.append(f"{WORD['prev']}보다 오른 아이템: " + ", ".join(
-            f"<b>{e(t['name'])}</b> <span class='up-t'>▲{t['dod_pp']:.1f}%p</span>" for t in rising)
-            + (_sub(specs) if specs else ""))
+        def specs(t: dict) -> str:
+            if not t.get("spec_changes"):
+                return ""
+            chips = "".join(
+                f"<span class='bf-spec'>{e(labels[x['group']])} {swatch(x['name']) if x['group'] == 'color' else ''}"
+                f"<b>{e(x['name'])}</b> <span class='up-t'>+{x['gain']:.0f}%p</span></span>" for x in t["spec_changes"])
+            return f"<div class='bf-specs'><span>늘어난 스펙</span>{chips}</div>"
+        cards = "".join(type_card(
+            t, f"<b class='up-t'>▲{t['dod_pp']:.1f}%p</b><span>인기 비중 {t['share']:.0f}%</span>", specs(t)) for t in rising)
+        secs.append((f"{WORD['prev']}보다 오른 아이템", f"인기 비중이 {WORD['prev']}보다 0.5%p 이상 오른 아이템이에요.",
+                     f"<div class='bf-grid'>{cards}</div>"))
     movers = g.get("movers", [])[:BRIEF_PRODUCTS]
     if movers:
-        rows = []
+        cards = []
         for m in movers:
             w = m.get("why")
             if w:
@@ -633,29 +728,37 @@ def brief_lines(g: dict) -> str:
                 why = (f"{e(w.get('summary') or ' · '.join(w['causes']))} "
                        f"<span class='conf{' ok' if ok else ''}'>{e(w['confidence'])}</span>")
             else:
-                why = "<span class='hint'>원인 조사 전 (오전 중 채워져요)</span>"
-            rows.append(f"{_product_link(m)} <span class='up-t'>▲{m['change']}</span> "
-                        f"<small>({m['prev_rank']}→{m['rank']}위)</small><span class='why1'>{why}</span>")
-        lines.append(f"순위가 크게 오른 상품 <span class='hint'>자세한 원인·출처는 7 시장 동향</span>" + _sub(rows))
+                why = "<span class='bf-wait'>원인 조사 전 (오전 중 채워져요)</span>"
+            cards.append(_bf_product(
+                m, f"<b class='up-t'>▲{m['change']}</b><span>{m['prev_rank']}위 → {m['rank']}위</span>",
+                f"<div class='bf-why'>{why}</div>"))
+        secs.append(("순위가 크게 오른 상품", f"{WORD['prev']}보다 전체 순위가 가장 많이 오른 상품이에요.",
+                     f"<div class='bf-grid'>{''.join(cards)}</div>"
+                     "<button type='button' class='bf-go' data-goto='동향'>자세한 원인·출처 보기 (시장 동향) ›</button>"))
     fresh = g.get("fresh_entries", [])
     if fresh:
-        rows = [f"{_product_link(p)} 의류 {p['clothing_rank']}위 "
-                f"<small>({WORD['prev']} {str(p['prev_clothing_rank']) + '위' if p.get('prev_clothing_rank') else '300위 밖'})</small>"
-                f" · {won(p['final_price'])} · <small>{int(p['registered'][5:7])}/{int(p['registered'][8:])} 등록</small>"
-                for p in fresh[:BRIEF_PRODUCTS]]
-        more = f" 외 {len(fresh) - BRIEF_PRODUCTS}개" if len(fresh) > BRIEF_PRODUCTS else ""
-        lines.append(f"뜨는 신상 <span class='hint'>등록 {g.get('fresh_days', 45)}일 안의 상품 중 의류 100위 안에 새로 들었거나 "
-                     f"10계단 이상 오름{more}</span>"
-                     + _sub(rows))
+        cards = "".join(_bf_product(
+            p, f"<b>의류 {p['clothing_rank']}위</b><span>{WORD['prev']} "
+               f"{str(p['prev_clothing_rank']) + '위' if p.get('prev_clothing_rank') else '300위 밖'}</span>",
+            f"<span class='bf-meta'>{won(p['final_price'])} · {int(p['registered'][5:7])}/{int(p['registered'][8:])} 등록</span>")
+            for p in fresh[:BRIEF_PRODUCTS])
+        more = f" 여기 3개 말고도 {len(fresh) - BRIEF_PRODUCTS}개가 더 있어요." if len(fresh) > BRIEF_PRODUCTS else ""
+        secs.append(("뜨는 신상", f"등록한 지 {g.get('fresh_days', 45)}일이 안 된 상품 중 의류 100위 안에 새로 들었거나 "
+                              f"10계단 이상 오른 상품이에요.{more}", f"<div class='bf-grid'>{cards}</div>"))
     brands = g.get("rising_brands", [])
     if brands:
-        rows = [f"<b>{e(b['brand'])}</b> {b['count']}개 <span class='up-t'>(+{b['gain']})</span>"
-                + (f" · 크게 오른 상품 {b['movers']}개" if b["movers"] else "")
-                + f" <small>· 대표: {e(b['best'][:30])}</small>" for b in brands]
-        lines.append(f"뜨는 브랜드 <span class='hint'>300위 안 상품 수가 {WORD['prev']}보다 늘어난 브랜드</span>" + _sub(rows))
-    if not lines:
+        scale = max(b["count"] for b in brands) or 1
+        rows = "".join(
+            f"<div class='bf-brow'><b>{e(b['brand'])}</b>"
+            f"<span class='bf-bt'><span style='width:{100 * b['count'] / scale:.0f}%'></span></span>"
+            f"<span class='bf-bv'>{b['count']}개</span><span class='up-t bf-bv'>+{b['gain']}</span>"
+            f"<small>대표: {e(b['best'][:30])}" + (f" · 크게 오른 상품 {b['movers']}개" if b["movers"] else "") + "</small></div>"
+            for b in brands)
+        secs.append(("뜨는 브랜드", f"300위 안 상품 수가 {WORD['prev']}보다 늘어난 브랜드예요. 막대는 300위 안 상품 수예요.",
+                     f"<div class='bf-brands'>{rows}</div>"))
+    if not secs:
         return '<p class="empty">데이터가 없어요.</p>'
-    return "<ul class='brief'>" + "".join(f"<li>{x}</li>" for x in lines) + "</ul>"
+    return "<div class='bf'>" + "".join(_bf_sec(n, t, h, b) for n, (t, h, b) in enumerate(secs, 1)) + "</div>"
 
 
 def item_rank_table(types: list[dict], has_yesterday: bool) -> str:
