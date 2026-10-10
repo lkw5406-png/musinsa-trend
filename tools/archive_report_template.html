@@ -7,7 +7,7 @@
   --page:#f3f4f2; --surface:#fcfcfb; --surface-2:#eceeeb;
   --ink:#111315; --ink-2:#4f5256; --muted:#85888b; --hair:#dfe1dd; --axis:#c3c5c0;
   --accent:#1c5cab; --accent-soft:#e3edf9;
-  --new:#1c5cab; --re:#6b4fa8; --up:#1d7a4a;
+  --new:#1c5cab; --re:#6b4fa8; --up:#1d7a4a; --sd-low:#7fb0ea;
   --h0:#e9ebe7; --h1:#cde2fb; --h2:#9ec5f4; --h3:#6da7ec; --h4:#3987e5; --h5:#256abf; --h6:#104281;
   --tip-bg:#111315; --tip-ink:#fcfcfb; --heat-hi-ink:#fff;
   --sans:"IBM Plex Sans KR", system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
@@ -19,7 +19,7 @@
     --page:#0f1011; --surface:#18191a; --surface-2:#222325;
     --ink:#f1f1ef; --ink-2:#c2c3be; --muted:#8a8c8c; --hair:#2c2d2e; --axis:#3a3b3c;
     --accent:#86b6ef; --accent-soft:#16243a;
-    --new:#86b6ef; --re:#b3a4ec; --up:#5cc98d;
+    --new:#86b6ef; --re:#b3a4ec; --up:#5cc98d; --sd-low:#2f5f9e;
     --h0:#232425; --h1:#1d3f6e; --h2:#184f95; --h3:#256abf; --h4:#3987e5; --h5:#6da7ec; --h6:#b7d3f6;
     --tip-bg:#f1f1ef; --tip-ink:#111315; --heat-hi-ink:#0f1011;
   }
@@ -29,7 +29,7 @@
   --page:#0f1011; --surface:#18191a; --surface-2:#222325;
   --ink:#f1f1ef; --ink-2:#c2c3be; --muted:#8a8c8c; --hair:#2c2d2e; --axis:#3a3b3c;
   --accent:#86b6ef; --accent-soft:#16243a;
-  --new:#86b6ef; --re:#b3a4ec; --up:#5cc98d;
+  --new:#86b6ef; --re:#b3a4ec; --up:#5cc98d; --sd-low:#2f5f9e;
   --h0:#232425; --h1:#1d3f6e; --h2:#184f95; --h3:#256abf; --h4:#3987e5; --h5:#6da7ec; --h6:#b7d3f6;
   --tip-bg:#f1f1ef; --tip-ink:#111315; --heat-hi-ink:#0f1011;
 }
@@ -91,11 +91,39 @@ h3{font-size:16px;margin:0;text-wrap:balance}
 .ph{position:relative;flex:none;width:64px;height:76px;border-radius:6px;background:var(--surface-2);overflow:hidden;display:grid;place-items:center;color:var(--muted);font-size:12px;font-weight:700}
 .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 
-/* persistent list */
-.plist{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--hair);border-radius:10px}
-.prow{display:grid;grid-template-columns:28px 64px minmax(0,1fr);gap:14px;padding:14px 16px;border-top:1px solid var(--hair)}
-.prow:first-child{border-top:0}
-.prow .no{font-family:var(--mono);color:var(--muted);font-size:13px;padding-top:2px}
+/* steady list (sd-) : 꾸준템 탭 전용. 다른 탭과 이름이 겹치지 않게 전부 sd- */
+.sd-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.sd-item{position:relative;background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:18px 20px;display:grid;grid-template-columns:34px 72px minmax(0,1fr);gap:16px}
+.sd-no{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--accent);line-height:1.2;font-variant-numeric:tabular-nums}
+.sd-item>.ph{width:72px;height:86px}
+.sd-body{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sd-head{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sd-brand{font-size:13px;color:var(--ink-2);display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.sd-now{font-size:12px;font-weight:700;color:var(--up);border:1px solid currentColor;border-radius:4px;padding:0 6px;white-space:nowrap}
+.sd-now.sd-gone{color:var(--muted);font-weight:500}
+.sd-name{font-size:16px;font-weight:700;line-height:1.4;text-decoration:none;overflow-wrap:anywhere}
+.sd-name:hover{text-decoration:underline}
+.sd-stats{margin:0;display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:10px 32px}
+.sd-stats div{display:flex;flex-direction:column-reverse;gap:1px}
+.sd-stats dt{font-size:12px;color:var(--ink-2)}
+.sd-stats dd{margin:0;font-family:var(--mono);font-size:20px;font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sd-stats dd small{font-family:var(--sans);font-size:13px;font-weight:400;color:var(--ink-2);margin-left:1px}
+.sd-stats .sd-lead dd{color:var(--accent)}
+.sd-chart{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 8px;max-width:760px}
+.sd-axis{display:flex;flex-direction:column;justify-content:space-between;font-family:var(--mono);font-size:12px;line-height:1;color:var(--muted);text-align:right}
+.sd-bars,.sd-years{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.sd-bars{height:52px;border-bottom:1px solid var(--axis)}
+.sd-bars span{display:flex;align-items:flex-end;padding-inline:1px;min-width:0}
+.sd-bars span.sd-jan,.sd-years span.sd-jan{border-left:1px solid var(--axis)}
+.sd-bars i{display:block;width:100%;height:var(--sd-h);border-radius:2px 2px 0 0;background:var(--sd-low)}
+.sd-bars i.sd-hi{background:var(--accent)}
+.sd-bars i.sd-out{height:3px;border-radius:0;background:var(--axis)}
+.sd-bars span:hover i{outline:2px solid var(--ink);outline-offset:0}
+.sd-years{grid-column:2;font-family:var(--mono);font-size:12px;line-height:1.3;color:var(--muted)}
+.sd-years span{white-space:nowrap;padding-left:3px;min-width:0;height:16px}
+.sd-why{margin:0;background:var(--accent-soft);border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.6;max-width:760px}
+.sd-why b{display:block;font-size:12px;color:var(--accent);margin-bottom:2px}
+.sd-legend i.sd-lg-out{height:3px;border-radius:0;background:var(--axis)}
 .pbody{display:flex;flex-direction:column;gap:6px;min-width:0}
 .pname{font-size:14.5px;font-weight:500;line-height:1.4}
 .pname a{text-decoration:none}
@@ -105,10 +133,6 @@ h3{font-size:16px;margin:0;text-wrap:balance}
 .pmeta b{font-family:var(--mono);font-weight:500;color:var(--ink)}
 .reason{font-size:13.5px;color:var(--ink-2);margin:0;max-width:78ch}
 .reason::before{content:"왜? ";font-weight:700;color:var(--accent)}
-.strip-wrap{overflow-x:auto}
-.strip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(9px,1fr);gap:2px;min-width:300px;max-width:560px}
-.strip i{height:14px;border-radius:2px;background:var(--h0)}
-.strip-years{display:grid;grid-auto-flow:column;gap:2px;min-width:300px;max-width:560px;font-size:10.5px;color:var(--muted);font-family:var(--mono)}
 .legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .legend i{width:14px;height:12px;border-radius:2px;display:inline-block}
@@ -248,9 +272,12 @@ table.heat td:hover{outline:2px solid var(--ink);outline-offset:0}
 footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--hair);font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
 @media (max-width:560px){
   .wrap,.top-in{padding-inline:16px}
-  .prow{grid-template-columns:52px minmax(0,1fr);gap:12px}
-  .prow .no{display:none}
-  .prow .ph{width:52px;height:62px}
+  .sd-item{grid-template-columns:56px minmax(0,1fr);gap:12px;padding:14px}
+  .sd-item>.ph{width:56px;height:67px}
+  .sd-no{position:absolute;top:8px;left:8px;z-index:1;font-size:13px;background:var(--surface);border:1px solid var(--hair);border-radius:6px;padding:1px 6px}
+  .sd-body{display:contents}
+  .sd-stats,.sd-chart,.sd-why{grid-column:1/-1}
+  .sd-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
   .rrow{grid-template-columns:26px 40px minmax(0,1fr);}
   .rrow .st{grid-column:3;text-align:left}
 }
@@ -313,7 +340,6 @@ function photo(id, cls=""){
   return `<div class="ph ${cls}">${src?`<img src="${src}" alt="${esc(p.b+' '+p.n)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}<span>${esc((p.b||"?").slice(0,2))}</span></div>`;
 }
 function level(n){ return n<=0?0:n<=2?1:n<=4?2:n<=7?3:n<=11?4:n<=16?5:6; }
-function rankLevel(r){ return r==null?0:r<=3?6:r<=5?5:r<=10?4:r<=20?3:2; }
 const itemReason = (id, ym) => (ym && R.month_items && R.month_items[`${ym}:${id}`]) || (R.items && R.items[id]) || "";
 
 /* ---------- chrome ---------- */
@@ -402,27 +428,38 @@ function summary(){
   </div>`;
 }
 
-function strip(ranks){
-  return `<div class="strip-wrap"><div class="strip" style="grid-template-columns:repeat(${M.length},minmax(9px,1fr))">${ranks.map((r,i)=>`<i style="background:var(--h${rankLevel(r)})" data-tip="${esc(ymLabel(M[i]))} · ${r?r+"위":"TOP 30 밖"}"></i>`).join("")}</div>
-  <div class="strip-years" style="grid-template-columns:repeat(${M.length},minmax(9px,1fr))">${M.map((ym,i)=>`<span>${ym.endsWith("-01")||i===0?"’"+ym.slice(2,4):""}</span>`).join("")}</div></div>`;
+// 꾸준템 막대: 한 달 = 막대 하나, 높을수록 순위가 높음 (1위 = 꽉 참). 색은 TOP 10 / 11~30위 두 단계만
+function sdChart(ranks){
+  const jan = i => i>0 && M[i].endsWith("-01");
+  return `<div class="sd-chart">
+    <div class="sd-axis" aria-hidden="true"><span>1위</span><span>30위</span></div>
+    <div class="sd-bars">${ranks.map((r,i)=>`<span class="${jan(i)?"sd-jan":""}" data-tip="${esc(ymLabel(M[i]))} · ${r?r+"위":"TOP 30 밖"}"><i class="${r?(r<=10?"sd-hi":""):"sd-out"}"${r?` style="--sd-h:${(12+(30-r)/29*88).toFixed(0)}%"`:""}></i></span>`).join("")}</div>
+    <div class="sd-years" aria-hidden="true">${M.map((ym,i)=>`<span class="${jan(i)?"sd-jan":""}">${i===0||jan(i)?ym.slice(0,4):""}</span>`).join("")}</div>
+  </div>`;
 }
-const rankLegend = `<div class="legend"><span><i style="background:var(--h6)"></i>1–3위</span><span><i style="background:var(--h5)"></i>4–5위</span><span><i style="background:var(--h4)"></i>6–10위</span><span><i style="background:var(--h3)"></i>11–20위</span><span><i style="background:var(--h2)"></i>21–30위</span><span><i style="background:var(--h0)"></i>TOP 30 밖</span></div>`;
+const sdLegend = `<div class="legend sd-legend"><span>막대가 높을수록 순위가 높습니다</span><span><i style="background:var(--accent)"></i>TOP 10</span><span><i style="background:var(--sd-low)"></i>11–30위</span><span><i class="sd-lg-out"></i>TOP 30 밖</span></div>`;
 
 function steady(){
   const list = G().persistent.filter(p=>state.cat==="all"||p.cat===state.cat).slice(0,30);
+  const lastM = M[M.length-1];
   return `
   <div class="block">
-    <div><h2>꾸준템: 가장 오래 TOP 30에 머문 옷</h2><p class="lede">대분류(상의·아우터·바지·원피스/스커트) 월간 TOP 30에 든 달이 많은 순서입니다. 막대 한 칸이 한 달이고, 진할수록 순위가 높습니다.</p></div>
+    <div><h2>꾸준템: 가장 오래 TOP 30에 머문 옷</h2><p class="lede">대분류(상의·아우터·바지·원피스/스커트) 월간 TOP 30에 든 달이 많은 순서입니다. 그래프는 막대 하나가 한 달이고, 막대가 높을수록 그 달 순위가 높습니다.</p></div>
     <div class="chips">${[["all","전체"],...topCats()].map(([k,v])=>`<button type="button" data-cat="${k}" aria-pressed="${state.cat===k}">${v}</button>`).join("")}</div>
-    ${rankLegend}
-    <div class="plist">${list.map((p,i)=>{ const q=P(p.id); const why=itemReason(p.id); return `
-      <div class="prow"><div class="no">${i+1}</div>${photo(p.id)}
-        <div class="pbody">
-          <div><div class="pbrand">${esc(q.b)} · ${esc(q.s)}${q.x?" · 판매 종료":""}</div><div class="pname"><a href="${url(p.id)}" target="_blank" rel="noreferrer">${esc(q.n)}</a></div></div>
-          <div class="pmeta"><span><b>${p.months}</b>개월 진입</span><span>최장 <b>${p.streak}</b>개월 연속</span><span>최고 <b>${p.best}</b>위</span><span>평균 <b>${p.avg}</b>위</span><span>${ymShort(p.first)} ~ ${ymShort(p.last)}</span></div>
-          ${strip(p.ranks)}
-          ${why?`<p class="reason">${esc(why)}</p>`:""}
-        </div></div>`;}).join("")}</div>
+    ${sdLegend}
+    <ol class="sd-list">${list.map((p,i)=>{ const q=P(p.id); const why=itemReason(p.id); return `
+      <li class="sd-item"><div class="sd-no">${i+1}</div>${photo(p.id)}
+        <div class="sd-body">
+          <div class="sd-head"><div class="sd-brand"><span>${esc(q.b)} · ${esc(q.s)}${q.x?" · 판매 종료":""}</span>${p.last===lastM?`<span class="sd-now">${+lastM.slice(5)}월에도 TOP 30</span>`:`<span class="sd-now sd-gone">${esc(ymLabel(p.last))} 이후 빠짐</span>`}</div><a class="sd-name" href="${url(p.id)}" target="_blank" rel="noreferrer">${esc(q.n)}</a></div>
+          <dl class="sd-stats">
+            <div class="sd-lead"><dt>TOP 30 진입</dt><dd>${p.months}<small>/${M.length}개월</small></dd></div>
+            <div><dt>최장 연속</dt><dd>${p.streak}<small>개월</small></dd></div>
+            <div><dt>최고 순위</dt><dd>${p.best}<small>위</small></dd></div>
+            <div><dt>평균 순위</dt><dd>${p.avg}<small>위</small></dd></div>
+          </dl>
+          ${sdChart(p.ranks)}
+          ${why?`<p class="sd-why"><b>꾸준한 이유</b>${esc(why)}</p>`:""}
+        </div></li>`;}).join("")}</ol>
   </div>`;
 }
 
