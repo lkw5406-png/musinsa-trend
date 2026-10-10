@@ -177,20 +177,24 @@ section.card h3 { font-size: 18px; line-height: 1.4; margin: 0 0 10px; }
 /* 순위가 오른 이유 (시장 동향) */
 tr.has-why td { border-bottom: 0; }
 tr.why-row td { padding-top: 10px; padding-bottom: 18px; }
-.why { font-size: 14.5px; color: var(--ink-2); line-height: 1.7; max-width: 80ch; border-left: 2px solid var(--up-text);
+.why { font-size: 13.5px; color: var(--ink-2); line-height: 1.65; max-width: 80ch; border-left: 2px solid var(--up-text);
   padding: 4px 0 4px 12px; }
 .why.none { color: var(--muted); border-left-color: var(--grid); }
-.why-pts { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 5px; color: var(--ink); line-height: 1.55; }
+.why-pts { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 5px; color: var(--ink-2); line-height: 1.55; }
+/* 상품명은 굵고 크게, 이유 항목은 작고 한 톤 흐리게 → 둘이 구분되게 (2026-10-11 사장님) */
+table.movers td a { font-size: 15px; font-weight: 700; }
+table.movers td a small { font-size: 13px; font-weight: 400; color: var(--ink-2); }
+table.movers .why a { font-size: inherit; font-weight: 400; }
 .why-pts li::marker { color: var(--muted); }
-.why-full { margin-top: 8px; font-size: 13.5px; }
+.why-full { margin-top: 8px; font-size: 13px; }
 .why-full summary { cursor: pointer; color: var(--muted); width: fit-content; }
 .why-full summary:hover { color: var(--ink); }
 .why-full p { margin: 6px 0 0; color: var(--ink-2); line-height: 1.65; }
 .why .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.why .tag { font-size: 13px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--chip); color: var(--ink); }
-.why .conf { font-size: 13px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.why .tag { font-size: 12.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--chip); color: var(--ink); }
+.why .conf { font-size: 12.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
 .why .conf.ok { color: var(--up-text); border-color: var(--up-text); }
-.why .src { margin-top: 8px; font-size: 13.5px; line-height: 1.6; }
+.why .src { margin-top: 8px; font-size: 13px; line-height: 1.6; }
 .why .src a { color: var(--accent); text-decoration: none; }
 .why .src a:hover { text-decoration: underline; }
 @media (max-width: 640px) {  /* 휴대폰: 카테고리 칸을 빼고 이유가 폭 전체를 쓰게 */
