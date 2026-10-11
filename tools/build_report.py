@@ -29,7 +29,7 @@ SCOPE_TEXT = {
 }
 PERIOD_DIRS = {"daily": "", "weekly": "weekly/", "monthly": "monthly/"}  # docs/ 아래 기간별 폴더
 # 지금 만드는 리포트의 비교 말 (render()가 기간에 맞게 바꿈): 일간 어제/내일, 주간 지난주/다음 주, 월간 지난달/다음 달
-WORD = {"prev": "어제", "next": "내일"}
+WORD = {"prev": "어제", "next": "내일", "span": "최근 1일"}
 
 CSS = """
 :root {
@@ -908,7 +908,7 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
         "요약": f"""
   <section class="card">
     <h2>{e(gender)} · 오늘 요약</h2>
-    <p class="sub">1일 랭킹 의류 {g['count']}개 기준이에요. 회의 자료에 그대로 옮겨 쓸 수 있게 정리했어요.</p>
+    <p class="sub">{WORD['span']} 랭킹 의류 {g['count']}개 기준이에요. 회의 자료에 그대로 옮겨 쓸 수 있게 정리했어요.</p>
     {brief_lines(g)}
   </section>""",
         "인기": f"""
@@ -982,6 +982,7 @@ def render(a: dict, dates: list[str] | None, base: str, root: str = "") -> str:
     """base = 이 페이지에서 같은 기간 폴더까지 경로, root = docs/ 까지 경로 (기간 전환 링크용)."""
     period = a.get("period", "daily")
     _, period_name, span, WORD["prev"], WORD["next"] = PERIODS[period]
+    WORD["span"] = span
     genders = list(a["genders"].items())
     pswitch = "".join(
         f'<a href="{root}{PERIOD_DIRS[k]}index.html" data-period="{k}"'
