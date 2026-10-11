@@ -244,26 +244,11 @@ section.card .brief .sub { margin: 10px 0 6px; padding-left: 1.1em; display: fle
 .brief .conf.ok { color: var(--up-text); border-color: var(--up-text); }
 /* 오늘 요약 새 구성 (bf-): 번호 붙은 구역 + 사진 카드. 위의 .brief는 지난 날짜 페이지용으로 남김 */
 .bf { display: flex; flex-direction: column; }
-/* 색 뜻 통일: 파랑(--accent) = 지금 상태, 초록(--up-text) = 오른 것, 빨강(--down-text) = 내린 것 */
-.bf-info { --tone: var(--accent); } .bf-up { --tone: var(--up-text); } .bf-down { --tone: var(--down-text); }
-.bf-top { margin: 4px 0 12px; }
-.bf-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-.bf-legend b { font-size: 15px; color: var(--ink); margin-right: 4px; }
-.bf-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.bf-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tone); display: inline-block; }
-.bf-glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 12px; }
-.bf-tile { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 14px 16px 16px; border: 1px solid var(--border);
-  border-top: 4px solid var(--tone); border-radius: 12px; background: color-mix(in srgb, var(--tone) 5%, var(--surface)); }
-.bf-k { font-size: 13px; font-weight: 600; color: var(--muted); }
-.bf-v { font-size: 18px; font-weight: 700; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical; overflow: hidden; }
-.bf-num { font-size: 26px; font-weight: 700; line-height: 1.2; color: var(--tone); font-variant-numeric: tabular-nums; }
-.bf-s { font-size: 13px; color: var(--ink-2); }
-.bf-sec { padding: 26px 0 8px; }
-.bf-head { padding: 10px 14px; border-left: 4px solid var(--tone); border-radius: 0 10px 10px 0;
-  background: color-mix(in srgb, var(--tone) 8%, transparent); }
+.bf-sec { padding: 28px 0; border-top: 1px solid var(--grid); }
+.bf-sec:first-child { padding-top: 8px; border-top: 0; }
+.bf-sec:last-child { padding-bottom: 4px; }
 section.card .bf-h { display: flex; align-items: center; gap: 10px; font-size: 21px; line-height: 1.35; margin: 0 0 4px; }
-.bf-n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--tone); color: #fff; font-size: 15px;
+.bf-n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 15px;
   font-weight: 700; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
 .bf-hint { font-size: 14px; line-height: 1.6; color: var(--muted); margin: 0 0 0 38px; max-width: 70ch; }
 .bf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); gap: 12px; margin-top: 16px; }
@@ -689,16 +674,10 @@ def _bf_img(url: str) -> str:
     return f"<img src='{e(url)}' alt='' loading='lazy' referrerpolicy='no-referrer'>"
 
 
-def _bf_sec(no: int, title: str, hint: str, body: str, tone: str = "info") -> str:
-    """tone: info(파랑 = 지금 상태) / up(초록 = 오른 것). 색 뜻은 맨 위 범례와 같게."""
+def _bf_sec(no: int, title: str, hint: str, body: str) -> str:
     hint_html = f"<p class='bf-hint'>{hint}</p>" if hint else ""
-    return (f"<section class='bf-sec bf-{tone}'><div class='bf-head'><h3 class='bf-h'><span class='bf-n'>{no}</span>{title}</h3>"
-            f"{hint_html}</div>{body}</section>")
-
-
-def _bf_tile(tone: str, label: str, value: str, num: str, sub: str) -> str:
-    return (f"<div class='bf-tile bf-{tone}'><span class='bf-k'>{label}</span><span class='bf-v'>{value}</span>"
-            f"<span class='bf-num'>{num}</span><span class='bf-s'>{sub}</span></div>")
+    return (f"<section class='bf-sec'><h3 class='bf-h'><span class='bf-n'>{no}</span>{title}</h3>"
+            f"{hint_html}{body}</section>")
 
 
 def _bf_product(p: dict, stat: str, extra: str = "") -> str:
@@ -783,25 +762,7 @@ def brief_lines(g: dict) -> str:
                      f"<div class='bf-brands'>{rows}</div>"))
     if not secs:
         return '<p class="empty">데이터가 없어요.</p>'
-    # 한눈에 보기: 처음 보는 사람이 10초 안에 결론을 잡게, 구역마다 1등만 큰 글씨로 (2026-10-11 사장님)
-    tiles = []
-    if types:
-        tiles.append(_bf_tile("info", "인기 1위 아이템", e(types[0]["name"]), f"{types[0]['share']:.0f}%", "인기 비중"))
-    if rising:
-        tiles.append(_bf_tile("up", f"{WORD['prev']}보다 가장 오른 아이템", e(rising[0]["name"]),
-                              f"▲{rising[0]['dod_pp']:.1f}%p", f"인기 비중 {rising[0]['share']:.0f}%"))
-    if movers:
-        m = movers[0]
-        tiles.append(_bf_tile("up", "순위가 가장 크게 오른 상품", f"{e(m['brand'])} {e(m['product_name'])}",
-                              f"▲{m['change']}", f"{m['prev_rank']}위 → {m['rank']}위"))
-    if brands:
-        tiles.append(_bf_tile("up", "가장 뜨는 브랜드", e(brands[0]["brand"]), f"+{brands[0]['gain']}개",
-                              f"300위 안 {brands[0]['count']}개"))
-    glance = ("<div class='bf-top'><div class='bf-legend'><b>한눈에 보기</b><span><i class='bf-dot bf-info'></i>파랑 = 지금 인기</span>"
-              "<span><i class='bf-dot bf-up'></i>초록 = 오른 것</span><span><i class='bf-dot bf-down'></i>빨강 = 내린 것</span></div>"
-              f"<div class='bf-glance'>{''.join(tiles)}</div></div>")
-    return ("<div class='bf'>" + glance + "".join(
-        _bf_sec(n, t, h, b, "info" if t.startswith("가장 인기") else "up") for n, (t, h, b) in enumerate(secs, 1)) + "</div>")
+    return "<div class='bf'>" + "".join(_bf_sec(n, t, h, b) for n, (t, h, b) in enumerate(secs, 1)) + "</div>"
 
 
 def item_rank_table(types: list[dict], has_yesterday: bool) -> str:
