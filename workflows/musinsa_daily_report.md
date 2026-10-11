@@ -35,8 +35,10 @@
 | 3. 분석 | `tools/analyze_trends.py --period` (분류: `tools/classify_attributes.py` + `tools/attribute_keywords.json`) | `.tmp/analysis_YYYY-MM-DD.json` (주간·월간은 `analysis_weekly_…`) |
 | 3-2. 순위 급상승 원인 (Claude 조사, 수집 직후 자동 · 예비 9시 루틴) | `tools/rise_reasons.py` + `tools/web_research.py` | `data/rise_reasons.json` (키 = `기간:날짜` → 상품번호) |
 | 4. 리포트 | `tools/build_report.py --period` | `docs/`(일간), `docs/weekly/`, `docs/monthly/` 각각 `index.html`(최신)·`reports/날짜.html`·`dates.json` |
+| 4-2. 위키 원본용 글 파일 (일간만, 4번이 돌 때 자동으로 같이) | `tools/wiki_export.py` (`build_report.build()`가 부름) | `docs/wiki_raw/무신사 남성 일간 랭킹 리포트 (날짜).md` |
 
 - 상품 상세정보·사진 판독·후기 요약은 상품 단위라 세 기간이 같이 씀 (같은 상품을 두 번 받지 않음).
+- **위키 원본(4-2, 2026-10-11 사장님 지시: 매일 자동으로 위키 raw에 쌓기)**: 일간 리포트를 만들 때마다 같은 분석 결과로 글 파일(md)을 `docs/wiki_raw/`에 만든다. 남성만, 인기 TOP은 전체 50위 + 대분류별 20위, 후기는 집계만. `docs` 아래라서 수집 Action과 루틴이 평소대로 `git add … docs`만 해도 같이 올라간다(따로 챙길 것 없음). 원인 조사 뒤 리포트를 다시 만들면 급상승 이유가 채워진 파일로 바뀐다. 사장님의 남성복 위키 저장소(비공개 `michiko-london_menswear-wiki`)의 Action `sync-musinsa-raw`가 하루 두 번(KST 10:30·22:30) 이 폴더를 위키 `raw/`로 복사해 간다. 만들다 실패해도 리포트는 그대로 나오고 로그에 경고만 남는다. 손으로 다시 만들기: `python tools/wiki_export.py --date 날짜` 또는 `--all`.
 - 리포트 맨 위 [일간|주간|월간] 전환은 보던 성별·탭을 유지한 채 이동.
 
 한 번에 실행: `python tools/run_daily.py` (수집 셋 다 → 오늘 리포트 날인 기간만 리포트). 재확인: `--only-missing`. 리포트 날이 아닌데 만들 때: `--report weekly`
@@ -211,3 +213,5 @@
 - 2026-10-07(10시 루틴): 클라우드에서 `pip install pillow`가 `python3`과 다른 파이썬에 깔려 `photo_queue.py`가 "Pillow 없음"을 냄 → `python3 -m pip install pillow`로 깔아야 묶음 이미지가 만들어짐.
 - 2026-10-08(10시 루틴): `web_research.py channel @쩡혁`이 영상 0개인 동명 빈 채널을 잡아 '최근 영상'이 빈칸으로 나왔음(도구 고장 아님) → 영상 0개면 그렇게 알려 주게 고침. 유튜버 채널은 핸들 대신 그 사람 영상을 `video`로 열어 나온 채널 번호(UC…)로 조회할 것.
 - 2026-10-09(10시 루틴): 매뉴얼은 "`video`로 열어 나온 채널 번호(UC…)로 조회"라고 했는데 `video` 결과에 채널 번호가 안 나왔음(`@dailyroom` 핸들도 엉뚱한 해외 채널을 잡음) → `video` 첫 줄 끝에 `채널 UC…`를 붙이게 고침.
+- 2026-10-11: **화면 확인용 크롬 임시 폴더를 안 치워 `.tmp/shots`가 6.9GB까지 쌓였음**(리포트 디자인을 고칠 때마다 크롬을 `--user-data-dir=.tmp/shots/…`로 띄워 스크린샷을 찍었고, 한 번에 150~190MB짜리 폴더가 40개 넘게 남음. OneDrive 용량도 같이 먹음). 사장님 확인 후 삭제. → **화면을 확인한 뒤에는 그 자리에서 크롬 임시 폴더를 지울 것.** 임시 폴더는 가능하면 프로젝트 밖(시스템 임시 폴더)에 만들 것.
+- 2026-10-11: 위키 원본 글 파일을 `data/`가 아니라 `docs/wiki_raw/`에 두는 이유 — 루틴의 커밋 단계가 `git add data/photo_labels.json data/rise_reasons.json docs`처럼 `data`는 파일을 골라 넣고 `docs`는 통째로 넣기 때문. `data/` 아래에 뒀다면 원인 조사 뒤 다시 만든 파일이 안 올라가 위키에는 '이유 조사 전' 상태만 남았을 것.

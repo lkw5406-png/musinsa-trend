@@ -16,9 +16,11 @@ import json
 import re
 import sys
 import time
+import traceback
 import urllib.request
 from html import escape
 
+import wiki_export
 from analyze_trends import analysis_path
 from common import DOCS_DIR, PERIODS, USER_AGENT, today_kst
 
@@ -1096,6 +1098,13 @@ def build(date: str, period: str = "daily") -> None:
     if old_archive.exists():
         old_archive.unlink()  # 예전 '지난 리포트' 목록 → 날짜 선택으로 대체
     print(f"리포트 생성: {out / 'index.html'} ({PERIODS[period][1]}, 날짜 {len(dates)}개)")
+    if period == "daily":
+        # 위키 원본용 글 파일도 같이 (2026-10-11 사장님: 매일 자동으로 위키 raw에 쌓기). 실패해도 리포트는 살림
+        try:
+            print(f"위키 원본 생성: {wiki_export.export(a)}")
+        except Exception:
+            traceback.print_exc()
+            print("::warning::위키 원본(docs/wiki_raw) 생성 실패 — 리포트는 정상. tools/wiki_export.py 확인")
 
 
 def embed_images(html: str) -> str:
