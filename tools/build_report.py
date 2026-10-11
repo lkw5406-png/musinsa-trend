@@ -34,8 +34,8 @@ WORD = {"prev": "어제", "next": "내일", "span": "최근 1일"}
 CSS = """
 :root {
   color-scheme: light;
-  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #45443f; --muted: #66645e;
-  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --page: #edede9; --surface: #ffffff; --ink: #0b0b0b; --ink-2: #2f2e2a; --muted: #5a5852;
+  --grid: #dcdbd3; --axis: #b9b8ad; --border: rgba(11,11,11,0.16);
   --bar: #2a78d6; --accent: #2a78d6; --up-text: #006300; --down-text: #b3261e;
   --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --chip: rgba(42,120,214,0.16);
 }
@@ -93,10 +93,10 @@ header p { margin: 0; color: var(--ink-2); max-width: 76ch; }
 .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   padding: 24px; margin-bottom: 20px; }
-section.card h2 { font-size: 21px; line-height: 1.35; letter-spacing: -0.01em; margin: 0 0 6px; }
-section.card .sub { font-size: 15px; line-height: 1.65; color: var(--ink-2); margin: 0 0 16px; max-width: 76ch; }
+section.card h2 { font-size: 23px; line-height: 1.35; letter-spacing: -0.01em; margin: 0 0 6px; }
+section.card .sub { font-size: 14.5px; line-height: 1.65; color: var(--ink-2); margin: 0 0 16px; max-width: 76ch; }
 /* 접어 둔 보는 법 (sub-more) */
-.sub-more { font-size: 14.5px; line-height: 1.65; color: var(--ink-2); margin: -10px 0 16px; max-width: 76ch; }
+.sub-more { font-size: 14px; line-height: 1.65; color: var(--ink-2); margin: -10px 0 16px; max-width: 76ch; }
 .sub-more summary { display: inline-flex; align-items: center; min-height: 36px; cursor: pointer; color: var(--accent); font-weight: 600; }
 .sub-more summary:hover { text-decoration: underline; }
 .sub-more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -114,7 +114,7 @@ section.card .sub { font-size: 15px; line-height: 1.65; color: var(--ink-2); mar
 .rec .why { font-size: 13px; color: var(--ink-2); }
 .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 22px 28px; }
 .charts > div, .two > div { min-width: 0; }
-.chart h3 { font-size: 17px; margin: 0; }
+.chart h3 { font-size: 18px; margin: 0; }
 .chart .cov { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
 .row { display: grid; grid-template-columns: 124px 1fr 48px 62px; align-items: center; gap: 8px;
   padding: 7px 4px; font-size: 14px; border-radius: 6px; }
@@ -142,8 +142,8 @@ td a:hover { text-decoration: underline; }
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 18px; }
 .up-t { color: var(--up-text); } .down-t { color: var(--down-text); } .flat-t { color: var(--muted); }
 .empty { color: var(--muted); font-size: 14px; }
-.sec-h { font-size: 17px; margin: 0 0 8px; }
-section.card h3 { font-size: 18px; line-height: 1.4; margin: 0 0 10px; }
+.sec-h { font-size: 18px; margin: 0 0 8px; }
+section.card h3 { font-size: 19px; line-height: 1.4; margin: 0 0 10px; }
 /* 카테고리 탭 (TOP 10) */
 .seg { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
 .seg button { font: inherit; font-size: 15px; font-weight: 600; min-height: 44px; padding: 0 16px; border-radius: 8px; cursor: pointer;
@@ -206,7 +206,7 @@ table.movers .why a { font-size: inherit; font-weight: 400; }
 .type-cat { font-size: 16px; margin: 22px 0 10px; color: var(--ink-2); }
 .type-cat:first-of-type { margin-top: 4px; }
 .tcard { border: 1px solid var(--border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.tcard h4 { margin: 0; font-size: 17px; }
+.tcard h4 { margin: 0; font-size: 18px; }
 .tcard .ts { font-size: 13px; color: var(--muted); margin-top: 2px; }
 .gallery { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .gallery img { width: 100%; aspect-ratio: 1 / 1.2; object-fit: cover; border-radius: 6px; background: var(--grid); display: block; }
@@ -247,10 +247,10 @@ section.card .brief .sub { margin: 10px 0 6px; padding-left: 1.1em; display: fle
 .bf-sec { padding: 28px 0; border-top: 1px solid var(--grid); }
 .bf-sec:first-child { padding-top: 8px; border-top: 0; }
 .bf-sec:last-child { padding-bottom: 4px; }
-section.card .bf-h { display: flex; align-items: center; gap: 10px; font-size: 20px; line-height: 1.35; margin: 0 0 4px; }
+section.card .bf-h { display: flex; align-items: center; gap: 10px; font-size: 21px; line-height: 1.35; margin: 0 0 4px; }
 .bf-n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 15px;
   font-weight: 700; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
-.bf-hint { font-size: 14.5px; line-height: 1.6; color: var(--muted); margin: 0 0 0 38px; max-width: 70ch; }
+.bf-hint { font-size: 14px; line-height: 1.6; color: var(--muted); margin: 0 0 0 38px; max-width: 70ch; }
 .bf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); gap: 12px; margin-top: 16px; }
 .bf-card { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px 14px; align-items: start; align-content: start;
   padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--page); color: inherit;
@@ -267,7 +267,7 @@ a.bf-card:hover { border-color: var(--accent); }
 .bf-meta { font-size: 14px; color: var(--ink-2); }
 .bf-meter { grid-column: 1 / -1; height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
 .bf-meter span { display: block; height: 100%; background: var(--bar); border-radius: 4px; }
-.bf-why { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--axis); font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+.bf-why { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--axis); font-size: 14px; line-height: 1.55; color: var(--ink); }
 .bf-wait { color: var(--muted); }
 .bf .conf { font-size: 12.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border);
   color: var(--muted); white-space: nowrap; }
@@ -317,7 +317,7 @@ tr.hi td { background: color-mix(in srgb, var(--up-text) 9%, transparent); }
 .prange span { position: absolute; top: 0; bottom: 0; background: var(--chip); border: 1px solid var(--accent); border-radius: 5px; }
 .prange i { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
 .prange i.o { width: 0; background: none; border-left: 2px dotted var(--down-text); }
-footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--grid); font-size: 14px; line-height: 1.7; color: var(--muted); max-width: 80ch; }
+footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--grid); font-size: 13.5px; line-height: 1.7; color: var(--muted); max-width: 80ch; }
 footer p { margin: 0 0 8px; }
 #tip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--page);
   font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; max-width: 260px; }
