@@ -572,8 +572,6 @@ def top10_section(idx: int, cats: list[dict]) -> str:
         cards = []
         total = len(c["products"])
         for n, p in enumerate(c["products"], 1):
-            attrs = " · ".join(p.get("attrs") or [])
-            attrs_html = f"<span class='meta'>{e(attrs)}</span>" if attrs else ""
             hide = " hidden" if n > TOP_VISIBLE else ""
             cards.append(
                 f"<div class='topcard'{hide}>"
@@ -583,7 +581,7 @@ def top10_section(idx: int, cats: list[dict]) -> str:
                 f"<div class='body'><span class='brand'>{e(p['brand'])}</span>"
                 f"<span class='name'>{e(p['product_name'])}</span>"
                 f"<span class='price'>{won(p['final_price'])}</span>"
-                f"<span class='meta'>{e(p['item_type'])} · 전체 {p['rank']}위</span>{attrs_html}</div></a>"
+                f"<span class='meta'>{e(p['item_type'])} · 전체 {p['rank']}위</span></div></a>"
                 f"{review_html(p.get('review'))}</div>")
         hidden = "hidden" if i else ""
         more = (f"<button type='button' class='more' data-visible='{TOP_VISIBLE}' data-step='{MORE_STEP}'>"
