@@ -38,6 +38,7 @@ CSS = """
   --grid: #dcdbd3; --axis: #b9b8ad; --border: rgba(11,11,11,0.16);
   --bar: #2a78d6; --accent: #2a78d6; --up-text: #006300; --down-text: #b3261e;
   --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --chip: rgba(42,120,214,0.16);
+  --pill-bg: rgba(42,120,214,0.14); --pill-ink: #1657a8;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -46,6 +47,7 @@ CSS = """
     --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
     --bar: #3987e5; --accent: #3987e5; --up-text: #0ca30c; --down-text: #e66767;
     --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --chip: rgba(57,135,229,0.30);
+    --pill-bg: rgba(57,135,229,0.26); --pill-ink: #a3c9f8;
   }
 }
 :root[data-theme="dark"] {
@@ -54,6 +56,7 @@ CSS = """
   --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
   --bar: #3987e5; --accent: #3987e5; --up-text: #0ca30c; --down-text: #e66767;
   --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --chip: rgba(57,135,229,0.30);
+  --pill-bg: rgba(57,135,229,0.26); --pill-ink: #a3c9f8;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -319,6 +322,27 @@ tr.hi td { background: color-mix(in srgb, var(--up-text) 9%, transparent); }
 .prange i.o { width: 0; background: none; border-left: 2px dotted var(--down-text); }
 footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--grid); font-size: 13.5px; line-height: 1.7; color: var(--muted); max-width: 80ch; }
 footer p { margin: 0 0 8px; }
+/* 소제목 = 색 알약 라벨 + 굵은 제목, 본문은 작게 (2026-10-11 사장님). 파랑 = 기본, 초록(.up) = 오른 것 */
+.pill { display: inline-flex; align-items: center; flex: none; font-size: 13px; font-weight: 700; line-height: 1; padding: 6px 11px;
+  border-radius: 999px; background: var(--pill-bg); color: var(--pill-ink); margin-right: 10px; white-space: nowrap; letter-spacing: 0; }
+.pill.up { background: color-mix(in srgb, var(--up-text) 14%, transparent); color: var(--up-text); }
+section.card h2, section.card h3 { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; font-weight: 800; }
+.bf-h .pill { margin-right: 0; }
+.bf-hint { margin-left: 0; }
+section.card .chart h3, section.card h3.pal-h { display: inline-flex; font-size: 15px; font-weight: 700; padding: 6px 13px; border-radius: 999px;
+  background: var(--pill-bg); color: var(--pill-ink); }
+.chart h3 { margin: 0 0 8px; }
+.chart .cov { margin-top: 0; }
+h3.pal-h { gap: 8px; margin: 22px 0 8px; } h3.pal-h:first-of-type { margin-top: 0; }
+h3.pal-h small { color: inherit; opacity: 0.8; }
+.tcard h4 { font-size: 18px; font-weight: 800; }
+.tcard .tt { padding-bottom: 10px; border-bottom: 1px solid var(--grid); }
+.arow .al { color: var(--ink); font-weight: 700; }
+.arow .al small { font-weight: 400; color: var(--muted); }
+thead th { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--ink-2); font-weight: 700; border-bottom: 0; }
+thead th:first-child { border-radius: 8px 0 0 8px; } thead th:last-child { border-radius: 0 8px 8px 0; }
+.pt tr.grp td { color: var(--pill-ink); }
+.bf-brand, .topcard .brand, .rec .brand { font-weight: 600; }
 #tip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--page);
   font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; max-width: 260px; }
 @media (max-width: 480px) {
@@ -534,7 +558,7 @@ def mover_table(title: str, products: list[dict], empty: str = "") -> str:
         f"<tr class='has-why'>{product_cells(p)}"
         f"<td class='num up-t'>▲{p['change']}<br><small>({p['prev_rank']}→{p['rank']})</small></td></tr>"
         f"<tr class='why-row'><td></td><td colspan='5'>{why_html(p.get('why'))}</td></tr>" for p in products)
-    return (f'<div><h3>{e(title)}</h3><div class="table-wrap"><table class="movers"><thead><tr>{PRODUCT_HEAD}'
+    return (f'<div><h3><span class="pill up">급상승</span>{e(title)}</h3><div class="table-wrap"><table class="movers"><thead><tr>{PRODUCT_HEAD}'
             f"<th class='num'>변화</th></tr></thead><tbody>{body}</tbody></table></div></div>")
 
 
@@ -542,7 +566,7 @@ def product_table(title: str, products: list[dict], empty: str = "") -> str:
     if not products:
         return f'<div><h3>{e(title)}</h3><p class="empty">{e(empty or "해당 상품이 없어요.")}</p></div>'
     body = "".join(f"<tr>{product_cells(p)}</tr>" for p in products)
-    return (f'<div><h3>{e(title)}</h3><div class="table-wrap"><table><thead><tr>{PRODUCT_HEAD}</tr></thead>'
+    return (f'<div><h3><span class="pill">신규</span>{e(title)}</h3><div class="table-wrap"><table><thead><tr>{PRODUCT_HEAD}</tr></thead>'
             f'<tbody>{body}</tbody></table></div></div>')
 
 
@@ -672,9 +696,14 @@ def _bf_img(url: str) -> str:
     return f"<img src='{e(url)}' alt='' loading='lazy' referrerpolicy='no-referrer'>"
 
 
+# 요약 구역 제목 앞 알약 라벨 (제목 첫머리 → 라벨, 색). 없으면 '상승'(초록)
+BF_LABELS = [("가장 인기", "인기", ""), ("순위가", "급상승", " up"), ("뜨는 신상", "신상", " up"), ("뜨는 브랜드", "브랜드", " up")]
+
+
 def _bf_sec(no: int, title: str, hint: str, body: str) -> str:
     hint_html = f"<p class='bf-hint'>{hint}</p>" if hint else ""
-    return (f"<section class='bf-sec'><h3 class='bf-h'><span class='bf-n'>{no}</span>{title}</h3>"
+    label, tone = next(((lab, t) for key, lab, t in BF_LABELS if title.startswith(key)), ("상승", " up"))
+    return (f"<section class='bf-sec'><h3 class='bf-h'><span class='pill{tone}'>{label}</span>{title}</h3>"
             f"{hint_html}{body}</section>")
 
 
@@ -905,13 +934,13 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
     body = {
         "요약": f"""
   <section class="card">
-    <h2>{e(gender)} · 오늘 요약</h2>
+    <h2><span class="pill">요약</span>{e(gender)} · 오늘 요약</h2>
     <p class="sub">{WORD['span']} 랭킹 의류 {g['count']}개 기준이에요. 회의 자료에 그대로 옮겨 쓸 수 있게 정리했어요.</p>
     {brief_lines(g)}
   </section>""",
         "인기": f"""
   <section class="card">
-    <h2>인기 TOP</h2>
+    <h2><span class="pill">랭킹</span>인기 TOP</h2>
     <p class="sub">카테고리를 눌러 바꿔 보세요. 맨 아래 '더보기'로 50위씩 더 볼 수 있어요.</p>
     <details class="sub-more"><summary>번호·후기 요약 보는 법</summary>
     <p>번호는 '전체'에서는 의류 순위, 나머지에서는 카테고리 안 순위예요. 카드의 '전체 N위'는 신발·가방 등을 포함한 무신사 전체 순위예요.</p>
@@ -920,37 +949,37 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
   </section>""",
         "기획": f"""
   <section class="card">
-    <h2>아이템 순위</h2>
+    <h2><span class="pill">순위</span>아이템 순위</h2>
     <p class="sub">어떤 아이템이 잘 팔리는지 인기 비중 순으로 정리했어요. 초록 줄은 {WORD['prev']}보다 0.5%p 이상 오른 아이템이에요. 3개 이상 오른 아이템만.</p>
     {item_rank_table(types, has_yesterday)}
   </section>
   <section class="card">
-    <h2>추천 아이템</h2>
+    <h2><span class="pill">추천</span>추천 아이템</h2>
     <p class="sub">순위가 높고 {trend_word} 속성을 많이 가진 상품이에요. 아이템 종류별로 1개씩 골랐어요.</p>
     {rec_cards(g['recommendations'])}
   </section>""",
         "디자인": f"""
   <section class="card">
-    <h2>아이템별 스펙</h2>
+    <h2><span class="pill">스펙</span>아이템별 스펙</h2>
     <p class="sub">카테고리를 눌러 바꿔 보세요. 사진은 그 아이템에서 잘 팔리는 순서예요.</p>
     <details class="sub-more"><summary>칩 숫자 보는 법</summary>
     <p>칩의 %는 그 아이템 중 해당 속성의 인기 비중이에요(파악된 상품 기준). 실루엣·기장은 팬츠류만 보여 줘요.</p></details>
     {design_section(gi, types)}
   </section>
   <section class="card">
-    <h2>대분류별 핏 · 실루엣 · 디테일</h2>
+    <h2><span class="pill">스펙</span>대분류별 핏 · 실루엣 · 디테일</h2>
     <p class="sub">아우터 / 상의 / 하의(바지·스커트)를 눌러 바꿔 보세요. {chart_sub}</p>
     {big_category_charts(gi, g)}
   </section>""",
         "소재컬러": f"""
   <section class="card">
-    <h2>컬러 팔레트</h2>
+    <h2><span class="pill">컬러</span>컬러 팔레트</h2>
     <p class="sub">대분류별로 잘 팔리는 컬러를 인기 비중 순으로 정리했어요. 여러 색으로 파는 상품은 판매 중인 색을 모두 셌어요.{' 작은 숫자는 ' + WORD['prev'] + ' 대비 변화예요.' if g['has_trend'] else ''}</p>
     {big_category_palettes(g)}
   </section>""",
         "가격": f"""
   <section class="card">
-    <h2>아이템별 가격</h2>
+    <h2><span class="pill">가격</span>아이템별 가격</h2>
     <p class="sub">아이템마다 지금 팔리는 가격(실판매가)과 할인 전 가격(정가)을 나란히 봐요.</p>
     <details class="sub-more"><summary>표·막대 보는 법</summary>
     <p>실판매가는 할인이 적용된 지금 가격, 정가는 할인 전 원래 가격이에요. '주로 팔리는 실판매가'는 가운데 절반의 상품이 들어가는 범위예요.</p>
@@ -958,7 +987,7 @@ def gender_panels(gi: int, gender: str, g: dict, has_yesterday: bool) -> str:
     {item_price_table(types)}
   </section>
   <section class="card">
-    <h2>가격대 분포</h2>
+    <h2><span class="pill">가격</span>가격대 분포</h2>
     <p class="sub">막대는 상품 수예요. 마우스를 올리면 카테고리별 개수가 나와요.</p>
     {price_section(g.get('price_bands'))}
   </section>""",
