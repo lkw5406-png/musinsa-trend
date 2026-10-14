@@ -379,7 +379,32 @@ const SEASONS = [["봄",[3,4,5]],["여름",[6,7,8]],["가을",[9,10,11]],["겨�
 
 const state = {g:"A", tab:"summary", month:M[M.length-1], cat:"all", bcat:"001", rcat:"001", ball:false, bmore:new Set()}; // ball: 순위 찾아보기에서 그해 모든 달 보기, bmore: 30위까지 펼친 달
 try{ const s = JSON.parse(localStorage.getItem("mra-state")||"{}"); if(s.g in GEN) state.g=s.g; }catch(e){}
-const h0 = (location.hash||"").slice(1); if(TABS.some(t=>t[0]===h0)) state.tab=h0;
+// 주소(#탭?g=M&m=2025-09…)에 지금 화면을 담아, 링크를 받은 사람도 같은 화면을 보게 (2026-10-14 사장님). 예전 링크(#summary)도 그대로 됨
+const SEA_CODE = {"봄":"spring","여름":"summer","가을":"fall","겨울":"winter"};
+function readHash(){
+  const [tab, qs] = decodeURIComponent((location.hash||"").slice(1)).split("?");
+  if(!TABS.some(t=>t[0]===tab)) return false;
+  state.tab = tab;
+  const q = new URLSearchParams(qs||"");
+  if(q.get("g") in GEN) state.g = q.get("g");
+  if(M.includes(q.get("m"))) state.month = q.get("m");
+  if(q.has("all")) state.ball = q.get("all")==="1";
+  const bc = q.get("bc"); if(bc===ALL_CODE || (bc && D.categories[bc])) state.bcat = bc;
+  const c = q.get("c"); if(c==="all" || TOP[c]) state.cat = c;
+  const sea = Object.keys(SEA_CODE).find(k=>SEA_CODE[k]===q.get("sea")); if(sea) state.sea = sea;
+  const sy = q.get("sy"); if(sy==="all" || M.some(m=>m.startsWith(sy+"-"))) state.sy = sy;
+  const rc = q.get("rc"); if(TOP[rc]) state.rcat = rc;
+  return true;
+}
+function stateHash(){
+  const q = {g: state.g};
+  if(state.tab==="browse") Object.assign(q, {m: state.month, bc: state.bcat}, state.ball ? {all: "1"} : {});
+  if(state.tab==="month") q.m = state.month;
+  if(state.tab==="steady") q.c = state.cat;
+  if(state.tab==="season") Object.assign(q, {sea: SEA_CODE[state.sea || nextSeason()], sy: state.sy || "all", rc: state.rcat});
+  return "#" + state.tab + "?" + new URLSearchParams(q).toString();
+}
+readHash();
 
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ymLabel = ym => `${ym.slice(0,4)}년 ${+ym.slice(5)}월`;
@@ -434,7 +459,9 @@ document.addEventListener("change", e=>{
     state.month = M.includes(same) ? same : M.filter(m=>m.startsWith(y)).pop(); render(); }
   if(e.target.id==="bcat"){ state.bcat=e.target.value; render(); }
 });
-function go(tab){ state.tab=tab; history.replaceState(null,"","#"+tab); chrome(); render(); window.scrollTo({top:0}); }
+function go(tab){ state.tab=tab; chrome(); render(); window.scrollTo({top:0}); }
+// 주소창에 링크를 붙여 넣어 바로 열 때(페이지가 이미 열린 상태)도 그 화면으로
+window.addEventListener("hashchange", ()=>{ if(location.hash!==stateHash() && readHash()){ chrome(); render(); } });
 
 /* ---------- tooltip ---------- */
 const tip = document.getElementById("tip");
@@ -448,6 +475,7 @@ function render(){
   const app = document.getElementById("app");
   const v = {summary, steady, season, month, brand, browse}[state.tab]();
   app.innerHTML = `<section class="view">${v}</section>`;
+  try{ history.replaceState(null, "", stateHash()); }catch(_){}
 }
 
 function seasonLeaders(){
