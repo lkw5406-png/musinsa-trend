@@ -585,7 +585,7 @@ function seasonRecs(seasonName, year){
   // 대표 상품과 디자인 키워드: 이 계절 달들의 대분류 TOP 30에서 그 종류 상품을 순위 가중치로 모음
   out.forEach(c=>{
     const w = {};
-    idx.forEach(i=>{ ((G().top[c.cat]||{})[M[i]]||[]).forEach((id,r)=>{ if(P(id).s===c.sub) w[id]=(w[id]||0)+(30-r) + (recent.includes(i)?15:0); }); });
+    idx.forEach(i=>{ ((G().top[c.cat]||{})[M[i]]||[]).forEach((id,r)=>{ if(P(id).s===c.sub && !P(id).sp) w[id]=(w[id]||0)+(30-r) + (recent.includes(i)?15:0); }); });
     const ids = Object.entries(w).sort((a,b)=>b[1]-a[1]).map(([id])=>id);
     c.ids = ids.slice(0,4);
     c.tags = {};
@@ -645,8 +645,8 @@ function periodIdx(seasonName, year){
   const fullBefore = before.length>0 && before.length===baseIdx.length;
   return {idx, before, baseIdx, fullBefore};
 }
-// 순위표 가중치: 1위 30점 … 30위 1점, 달마다 더함
-function listWeights(code, idxs){ const w={}; idxs.forEach(i=>(((G().top[code]||{})[M[i]])||[]).forEach((id,r)=>{ w[id]=(w[id]||0)+(30-r); })); return w; }
+// 순위표 가중치: 1위 30점 … 30위 1점, 달마다 더함. 스포츠·운동복(sp)은 빼고 셈(2026-10-15 사장님), 순위 숫자는 원래 그대로
+function listWeights(code, idxs){ const w={}; idxs.forEach(i=>(((G().top[code]||{})[M[i]])||[]).forEach((id,r)=>{ if(!P(id).sp) w[id]=(w[id]||0)+(30-r); })); return w; }
 function tagShares(w){ // {group: {tag: 가중 비율}}
   const tot = Object.values(w).reduce((a,b)=>a+b,0) || 1, out = {};
   Object.entries(w).forEach(([id,v])=>{ const k=P(id).k||{}; Object.entries(k).forEach(([g,tags])=>tags.forEach(t=>{ (out[g]=out[g]||{})[t]=((out[g]||{})[t]||0)+v/tot; })); });

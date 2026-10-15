@@ -12,11 +12,15 @@ data/archive_monthly/YYYY-MM.csv (musinsa_archive.py) 전부를 읽어 .tmp/arch
   순위 숫자는 무신사 전체 순위 그대로 둔다(그래서 중간이 빈다). 꾸준템·시즌·브랜드 분석에는 넣지 않는다.
   (2026-10-07 사장님 결정: 의류만, 순위와 아이템만 보이게)
 - 상품명 키워드: 핏·실루엣·원단·디테일·컬러 (tools/attribute_keywords.json 재사용)
+- 스포츠 제외 (2026-10-15 사장님): 스포츠·아웃도어 브랜드와 운동복(data/plan_items_27ss.json의 exclude_brands·exclude_name,
+  상품 기획 분석과 같은 기준)은 꾸준템·시즌 구성·키워드·브랜드·월별 변화에서 뺀다. 남은 상품의 순위 숫자는 무신사 원래 순위 그대로.
+  순위 찾아보기용 top·overall은 원래 순위 전부 그대로 두고, 상품에 sport 표시만 해서 페이지 추천 계산에서 거른다.
 
 사용법: python tools/analyze_archive.py
 """
 import csv
 import json
+import re
 import sys
 from collections import Counter, defaultdict
 
@@ -30,6 +34,14 @@ TOP_CATS = {"001": "상의", "002": "아우터", "003": "바지", "100": "원피
 GENDERS = {"A": "전체", "M": "남성", "F": "여성"}
 KEYWORD_GROUPS = ("fit", "silhouette", "texture", "detail", "color")
 NOTABLE_PER_MONTH = 12  # 성별마다 달마다 원인 조사 후보 수
+SPEC_PATH = ROOT / "data" / "plan_items_27ss.json"  # 스포츠 브랜드·운동복 제외 기준
+
+
+def sport_rule():
+    spec = json.loads(SPEC_PATH.read_text(encoding="utf-8"))
+    brands = set(spec.get("exclude_brands", []))
+    name = re.compile(spec["exclude_name"], re.I) if spec.get("exclude_name") else None
+    return lambda p: p["brand_id"] in brands or bool(name and name.search(p["name"]))
 
 
 def load_rows(folder=ARCHIVE_DIR) -> tuple[list[str], list[dict]]:
@@ -56,8 +68,10 @@ def product_table(rows: list[dict]) -> dict:
             p["cat"] = p["cat"] or r["parent_code"]
         else:
             p["cat"] = r["category_code"]
+    is_sport = sport_rule()
     for pid, p in products.items():
         p["sub"] = subs[pid].most_common(1)[0][0] if subs[pid] else "기타"
+        p["sport"] = is_sport(p)
         # 디자인 키워드 (상품명 기준) — 시즌 추천 카드에서 세부 종류별로 모아 보여 줌
         tags = {g: classify_attributes.keywords(p["name"], g) for g in KEYWORD_GROUPS}
         p["tags"] = {g: v for g, v in tags.items() if v}
@@ -72,13 +86,14 @@ def ranking_tables(rows: list[dict]) -> dict:
     return table
 
 
-def item_history(months: list[str], table: dict, gender: str) -> dict:
-    """상품번호 → {달: 대분류 순위}"""
+def item_history(months: list[str], table: dict, gender: str, products: dict) -> dict:
+    """상품번호 → {달: 대분류 순위} — 스포츠 제외, 순위는 원래 숫자"""
     hist = defaultdict(dict)
     for cat in TOP_CATS:
         for ym, ids in table[(gender, cat)].items():
             for i, pid in enumerate(ids, 1):
-                hist[pid][ym] = i
+                if not products[pid]["sport"]:
+                    hist[pid][ym] = i
     return hist
 
 
@@ -111,7 +126,8 @@ def composition(months: list[str], table: dict, gender: str, products: dict) -> 
         per = defaultdict(lambda: [0] * len(months))
         for mi, ym in enumerate(months):
             for pid in table[(gender, cat)].get(ym, []):
-                per[products[pid]["sub"]][mi] += 1
+                if not products[pid]["sport"]:
+                    per[products[pid]["sub"]][mi] += 1
         cal = {}
         for sub, counts in per.items():
             by_cal = defaultdict(list)
@@ -126,7 +142,7 @@ def keyword_trends(months: list[str], table: dict, gender: str, products: dict) 
     """키워드 그룹 → 이름 → 달마다 대분류 TOP 30 합계(남성 90·전체·여성 120) 중 비율(%)"""
     out = {g: defaultdict(lambda: [0.0] * len(months)) for g in KEYWORD_GROUPS}
     for mi, ym in enumerate(months):
-        ids = [pid for cat in TOP_CATS for pid in table[(gender, cat)].get(ym, [])]
+        ids = [pid for cat in TOP_CATS for pid in table[(gender, cat)].get(ym, []) if not products[pid]["sport"]]
         if not ids:
             continue
         for group in KEYWORD_GROUPS:
@@ -208,7 +224,7 @@ def analyze() -> dict:
         categories.setdefault(r["category_code"], {"name": r["category_name"], "parent": r["parent_code"]})
     result = {"months": months, "categories": categories, "products": products, "genders": {}}
     for g in GENDERS:
-        hist = item_history(months, table, g)
+        hist = item_history(months, table, g, products)
         result["genders"][g] = {
             "persistent": persistent(months, hist, products),
             "composition": composition(months, table, g, products),

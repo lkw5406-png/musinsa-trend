@@ -85,7 +85,7 @@ def thumb(pid: str, url: str) -> str:
 
 
 def compact_products(products: dict, with_image_path: bool, prices: dict) -> dict:
-    """페이지에 넣는 상품 정보. 사진은 무신사 주소 뒷부분만(i) 넣어 크기를 줄인다. p = 정가."""
+    """페이지에 넣는 상품 정보. 사진은 무신사 주소 뒷부분만(i) 넣어 크기를 줄인다. p = 정가, sp = 스포츠·운동복."""
     out = {}
     for pid, p in products.items():
         item = {"n": p["name"], "b": p["brand"], "c": p["cat"], "s": p["sub"]}
@@ -93,6 +93,8 @@ def compact_products(products: dict, with_image_path: bool, prices: dict) -> dic
             item["p"] = prices[pid]["normal"]
         if p.get("discontinued"):
             item["x"] = 1
+        if p.get("sport"):
+            item["sp"] = 1  # 스포츠·운동복: 순위 찾아보기엔 보이고 추천 계산에선 빠짐
         if p.get("tags"):
             item["k"] = p["tags"]
         if with_image_path and p["image"].startswith(IMAGE_HOST):
