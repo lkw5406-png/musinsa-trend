@@ -1,0 +1,12 @@
+{
+ "_설명": "2026 신상 페이지 '이유' 창의 '그 달 배경'. 달마다 날씨와 무신사 행사(세일·프로모션). Claude가 기상청 발표 기사·무신사 보도자료로 조사(2026-10-15). 확인 못 한 달은 비워 둠.",
+ "2026-01": {"weather": "역대급 한파로 패딩 매출이 크게 늘어난 달", "events": [], "sources": [{"title": "아시아경제: 역대급 한파에 패딩 판매", "url": "https://view.asiae.co.kr/article/2026012017004986633"}]},
+ "2026-02": {"weather": "", "events": ["무신사 '2026 설날 빅세일'(온·오프라인, 2/25까지) · 설 연휴 2/16~18"], "sources": [{"title": "무신사 뉴스룸: 2026 설날 빅세일", "url": "https://newsroom.musinsa.com/newsroom-menu/2026-0209"}]},
+ "2026-03": {"weather": "평균 7.4℃로 9년 연속 평년보다 따뜻 · 봄 아우터 수요가 일찍 시작", "events": ["무신사 '봄·여름 시즌 신상 캠페인'(3/26 오전 11시까지, 신상 할인)"], "sources": [{"title": "기상청 2026년 3월 기후특성", "url": "https://www.kma.go.kr/kma/news/press_01.jsp?mode=view&num=1194628"}, {"title": "무신사 뉴스룸: 봄·여름 시즌 신상 캠페인", "url": "https://newsroom.musinsa.com/newsroom-menu/2026-0317"}]},
+ "2026-04": {"weather": "평균 13.8℃로 역대 3위 · 중순이 특히 더워 반팔이 일찍 팔림", "events": ["무신사 메가스토어 성수 오픈(4/24)"], "sources": [{"title": "[2026년 4월 기후특성] 큰 변동 보인 4월", "url": "https://m.news.nate.com/view/20260504n22394"}]},
+ "2026-05": {"weather": "5월 중순 고온 · 일부 지역 관측 이래 가장 이른 폭염 · 봄철(3~5월) 평균 13.3℃ 역대 2위", "events": ["무신사 '패션 페스타'(5/18~28, 최대 80% · 최대 30% 쿠폰)"], "sources": [{"title": "무신사 뉴스룸: 무신사 패션 페스타", "url": "https://newsroom.musinsa.com/newsroom-menu/2026-0518"}, {"title": "2026년 봄철 기후특성", "url": "https://dazabi.com/insurance_magazine/article.php?id=23783"}]},
+ "2026-06": {"weather": "평균 22.2℃ 역대 7위 · 폭염·열대야는 적음 · 장마가 늦게 시작(중부 7/1)", "events": ["'무신사 무진장 26 여름 블랙프라이데이'(6/14~24)"], "sources": [{"title": "무신사 뉴스룸: 무진장 26 여름 블랙프라이데이", "url": "https://newsroom.musinsa.com/newsroom-menu/2026-0612-01"}, {"title": "뉴스1: 6월 평균기온 역대 7위", "url": "https://www.news1.kr/amp/society/environment/6216672"}]},
+ "2026-07": {"weather": "평균 26.8℃ 역대 3위 · 열대야 역대 최다 · 중부 폭우, 남부 폭염", "events": [], "sources": [{"title": "아이뉴스24: 7월 열대야 일수 역대 최대", "url": "https://www.inews24.com/view/1991906"}]},
+ "2026-08": {"weather": "평균 27.1℃ 역대 2위 · 8/1 관측 이래 가장 더운 날 · 그런데도 경량 패딩이 일찍 팔림", "events": ["무신사 8월 경량 패딩 거래액 전년 대비 718% 증가 · 8/1~10 '경량패딩' 검색 105% 증가"], "sources": [{"title": "헤럴드경제: 무신사 8월 경량 패딩 거래액", "url": "https://biz.heraldcorp.com/article/10868458"}]},
+ "2026-09": {"weather": "평균 21.7℃로 평년보다 1.2℃ 높음 · 하순(21~24일) 늦더위 · 강수량 하위 2위", "events": ["무신사 '2026 추석 빅세일'(9/21~27, 브랜드위크 최대 30% 쿠폰) · 애프터 세일 10/8까지"], "sources": [{"title": "아이뉴스24: 가을이라기보다 여름이었던 9월", "url": "https://inews24.com/view/2011257"}, {"title": "딜사이트: 무신사 추석 빅세일", "url": "https://dealsite.co.kr/articles/169293"}]}
+}

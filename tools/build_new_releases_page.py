@@ -1,7 +1,8 @@
 """그해 신상 랭킹 진입 페이지(Claude 링크용 한 장짜리) 생성 Tool.
 
 입력: .tmp/new_releases_<연도>.json (tools/new_releases.py), data/archive_prices.json (정가, 만들 때 다시 읽음),
-      data/new_release_reasons_<연도>.json (랭킹에 오른 이유, tools/new_release_reasons.py — 카드의 '이유' 버튼)
+      data/new_release_reasons_<연도>.json (랭킹에 오른 이유, tools/new_release_reasons.py — 카드의 '이유' 버튼),
+      data/new_release_context_<연도>.json (달마다 날씨·무신사 행사 — '이유' 창의 '그 달 배경', 2026-10-15 사장님: 유튜브만 말고 종합적으로)
 틀: tools/new_releases_template.html
 출력 (한 번에 둘 다)
 - .tmp/new_releases_<연도>.html → Claude 링크로 올림 (Artifact). 사진을 페이지 안에 넣음
@@ -86,9 +87,11 @@ def main() -> int:
         return 0
 
     import new_release_reasons as nrr
+    cpath = ROOT / "data" / f"new_release_context_{args.year}.json"
+    context = {k: v for k, v in json.loads(cpath.read_text(encoding="utf-8")).items() if not k.startswith("_")} if cpath.exists() else {}
     payload = {"reason_targets": len(nrr.targets(args.year)), "reason_done": sum(1 for x in items.values() if "q" in x),
                "reason_rank": nrr.BEST_RANK, "year": data["year"], "gender": data["gender"], "months": data["months"], "cats": data["cats"],
-               "excluded": data["excluded_sports"], "items": items}
+               "excluded": data["excluded_sports"], "items": items, "context": context}
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     data_js = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 

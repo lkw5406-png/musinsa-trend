@@ -5,6 +5,9 @@
 - 조사 대상 (2026-10-15 사장님 선택): **처음 랭킹에 오른 달에 세부 카테고리(또는 대분류) 10위 안**에 든 신상.
   그해 남성 신상 1,025개 중 278개. 하루 유튜브 검색 한도(약 100번, 매일 루틴과 나눠 씀) 때문에 며칠에 나눠 조사.
 - 원인을 찾는 기간 = 등록일 ~ 처음 오른 달 말일 (월간 랭킹이라 그 한 달 동안의 판매·관심이 순위를 만듦).
+- 유튜브만 보지 말고 종합적으로 (2026-10-15 사장님): 그 달 날씨·무신사 세일(data/new_release_context_<연도>.json, 페이지 '그 달 배경'에도 자동 표시),
+  할인·가격(매일 수집 data/history는 2026-09-24부터라 9월 상품만 할인율·판매량 단서가 있음), 같은 브랜드 동반 진입, 브랜드 화제까지 보고
+  관련 있으면 causes·points에 넣는다.
 - 매일 리포트에서 같은 상품을 이미 조사했으면(data/rise_reasons.json) --import로 가져와 다시 조사하지 않음.
 
 사용법:
@@ -17,7 +20,9 @@ from __future__ import annotations
 
 import argparse
 import calendar
+import csv
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -65,7 +70,28 @@ def rank_text(p: dict, ym: str) -> str:
     return " · ".join(parts)
 
 
-def clues(p: dict, all_t: dict) -> list[str]:
+def context(year: str) -> dict:
+    path = ROOT / "data" / f"new_release_context_{year}.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def daily_hints(pid: str, ym: str) -> list[str]:
+    """매일 수집(data/history, 2026-09-24부터)에 그 달 이 상품이 있으면 가격·할인율·판매량 (첫날·마지막 날)."""
+    seen = []
+    for path in sorted((ROOT / "data" / "history").glob(f"{ym}-*.csv")):
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            for r in csv.DictReader(f):
+                if r["product_id"] == pid and r["gender_filter"] == "M":
+                    seen.append(r)
+                    break
+    if not seen:
+        return []
+    fmt = lambda r: (f"{r['date']} {int(float(r['final_price'] or 0)):,}원(할인 {r['discount_rate'] or 0}%)"
+                     + (f" · {r['sales_label']}" if r.get("sales_label") and r["sales_label"].lower() != "none" else ""))
+    return [f"매일 수집: {fmt(seen[0])}" + (f" → {fmt(seen[-1])}" if len(seen) > 1 else "")]
+
+
+def clues(p: dict, all_t: dict, ctx: dict | None = None) -> list[str]:
     ym = p["first"]
     last_day = calendar.monthrange(int(ym[:4]), int(ym[5:]))[1]
     same = [q for q in all_t.values() if q["brand"] == p["brand"] and q["first"] == ym]
@@ -75,7 +101,21 @@ def clues(p: dict, all_t: dict) -> list[str]:
            f"정가 {p['price']:,}원" if p.get("price") else "정가 정보 없음"]
     if len(same) > 1:
         out.append(f"같은 브랜드 같은 달 신상 진입 {len(same)}개 (대상 안)")
-    return out
+    c = (ctx or {}).get(ym) or {}
+    if c.get("weather"):
+        out.append(f"그 달 날씨: {c['weather']}")
+    out += [f"그 달 무신사: {e}" for e in c.get("events", [])]
+    return out + daily_hints(p["id"], ym)
+
+
+def warn_months(batch: dict, t: dict) -> None:
+    """'N월까지'라고 쓴 달이 실제 마지막 랭킹 달과 다르면 경고 (2026-10-15: 한 달씩 틀리게 쓴 적 있음)."""
+    for pid, r in batch.items():
+        last = int(max(t[pid]["ranks"])[5:])
+        text = " ".join(r.get("points", [])) + " " + r.get("reason", "")
+        for m in re.findall(r"(\d+)월까지 (?:\d+개월|매달|랭킹|거의|여러)", text):
+            if int(m) != last:
+                print(f"  확인 필요 {pid}: '{m}월까지'라고 썼지만 마지막 랭킹 달은 {last}월")
 
 
 def main() -> int:
@@ -111,6 +151,7 @@ def main() -> int:
         if errs:
             print("거부 — 고쳐서 다시:\n  " + "\n  ".join(errs))
             return 1
+        warn_months(batch, t)
         reasons.update(batch)
         save(args.year, reasons)
         print(f"{len(batch)}개 합침 → {reasons_path(args.year)}")
@@ -119,7 +160,7 @@ def main() -> int:
         todo = sorted((p for pid, p in t.items() if pid not in reasons and (not args.month or p["first"] == args.month)),
                       key=lambda p: (p["first"], p["brand"], best_rank(p, p["first"])))[: args.next]
         items = [{"product_id": p["id"], "brand": p["brand"], "name": p["name"], "item_type": p["sub"],
-                  "reg": p["reg"], "first": p["first"], "hints": clues(p, t)} for p in todo]
+                  "reg": p["reg"], "first": p["first"], "hints": clues(p, t, context(args.year))} for p in todo]
         QUEUE_PATH.write_text(json.dumps({"causes": CAUSES, "items": items}, ensure_ascii=False, indent=1), encoding="utf-8")
         for it in items:
             print(f"- {it['product_id']} {it['brand']} | {it['name']} ({it['item_type']})")
