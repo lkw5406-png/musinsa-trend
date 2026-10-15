@@ -10,7 +10,10 @@
 - 요청 전에 매일 수집 CSV(data/history*)의 original_price로 먼저 채워 요청을 줄인다.
 - 전체 약 2.6만 개 · 요청 간격 1.5초 → 약 12~13시간.
 
-사용법: python tools/archive_prices.py [--limit N] [--top-only]
+- --ids 파일: 그 파일(한 줄에 상품번호 하나)의 상품만 먼저 받음. 급한 조사용 (2026-10-15: 2026 신상 페이지).
+  같은 파일(data/archive_prices.json)을 쓰므로 두 개를 동시에 돌리지 말 것 — 나중에 저장한 쪽이 덮어씀.
+
+사용법: python tools/archive_prices.py [--limit N] [--top-only] [--ids FILE]
 """
 import argparse
 import csv
@@ -68,10 +71,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, help="이번에 요청할 최대 상품 수 (시험용)")
     parser.add_argument("--top-only", action="store_true", help="대분류 TOP 30 상품만")
+    parser.add_argument("--ids", help="이 파일의 상품번호만 받기 (한 줄에 하나)")
     args = parser.parse_args()
 
     top, sub = archive_products()
     order = top if args.top_only else top + sub
+    if args.ids:
+        wanted = [x.strip() for x in open(args.ids, encoding="utf-8") if x.strip()]
+        order = [pid for pid in wanted if pid in set(order)]
     prices = load_prices()
     seeded = seed_from_history(prices, set(order))
     if seeded:
