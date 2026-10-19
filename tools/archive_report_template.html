@@ -338,6 +338,32 @@ h2{font-weight:800}
 .cz-facts dt{color:var(--ink-2);font-weight:700}
 .sd-stats dt{font-weight:500}
 .season h3{padding-bottom:8px;border-bottom:1px solid var(--hair)}
+
+/* color distribution (cl-) */
+.cl-sw{flex:none;display:inline-block;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 30%,transparent)}
+.cl-cover{margin:0;font-size:13.5px;color:var(--ink-2)}
+.cl-cover b{font-family:var(--mono);font-weight:500;color:var(--ink)}
+.cl-row{display:grid;grid-template-columns:14px minmax(0,7.5em) minmax(60px,1fr) 3em 3.8em;align-items:center;gap:10px;font-size:14.5px}
+.cl-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-bar{position:relative;height:16px;background:var(--surface-2);border-radius:3px}
+.cl-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:3px}
+.cl-bar b{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink)}
+.cl-val{font-family:var(--mono);font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+.cl-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;color:var(--ink-2)}
+.cl-legend span{display:inline-flex;align-items:center;gap:6px}
+.cl-sub{display:grid;grid-template-columns:minmax(0,10em) minmax(80px,1fr);gap:6px 14px;align-items:center;padding:12px 0;border-top:1px solid var(--hair)}
+.cl-sub:nth-of-type(1){border-top:0}
+.cl-sub-name{font-weight:700;font-size:14.5px;line-height:1.35}
+.cl-sub-name small{display:block;font-weight:400;font-size:13px;color:var(--muted)}
+.cl-stack{display:flex;gap:2px;height:24px}
+.cl-stack i{min-width:3px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 22%,transparent)}
+.cl-stack i:first-child{border-radius:4px 0 0 4px} .cl-stack i:last-child{border-radius:0 4px 4px 0}
+.cl-stack i:only-child{border-radius:4px}
+.cl-top{grid-column:2;font-size:13.5px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:2px 14px}
+.cl-top span{display:inline-flex;align-items:center;gap:5px}
+.cl-top .cl-sw{width:11px;height:11px}
+@media (max-width:560px){.cl-sub{grid-template-columns:1fr}.cl-top{grid-column:auto}}
+@media (max-width:480px){.cl-row{grid-template-columns:14px minmax(0,6em) minmax(36px,1fr) 2.8em 3.4em;gap:6px}}
 </style>
 
 <header class="top">
@@ -373,7 +399,7 @@ const TOP_ORDER = [["001","상의"],["002","아우터"],["003","바지"],["100",
 const TOP = Object.fromEntries(TOP_ORDER);
 const GEN = {A:"전체",M:"남성",F:"여성"};
 const ALL_CODE = "000"; // 품목 통합 전체 랭킹 중 의류만 (순위는 무신사 전체 순위 그대로). 순위 찾아보기에서만 씀
-const TABS = [["summary","핵심 요약"],["browse","순위 찾아보기"],["steady","꾸준템"],["season","시즌 캘린더"],["month","월별 흐름"],["brand","브랜드 랭킹"]];
+const TABS = [["summary","핵심 요약"],["browse","순위 찾아보기"],["steady","꾸준템"],["season","시즌 캘린더"],["month","월별 흐름"],["brand","브랜드 랭킹"],["color","컬러 분포"]];
 const SEASON_OF = m => m>=3&&m<=5?"봄":m>=6&&m<=8?"여름":m>=9&&m<=11?"가을":"겨울";
 const SEASONS = [["봄",[3,4,5]],["여름",[6,7,8]],["가을",[9,10,11]],["겨울",[12,1,2]]];
 
@@ -394,6 +420,9 @@ function readHash(){
   const sea = Object.keys(SEA_CODE).find(k=>SEA_CODE[k]===q.get("sea")); if(sea) state.sea = sea;
   const sy = q.get("sy"); if(sy==="all" || M.some(m=>m.startsWith(sy+"-"))) state.sy = sy;
   const rc = q.get("rc"); if(TOP[rc]) state.rcat = rc;
+  const cy = q.get("cy"); if(cy==="all" || M.some(m=>m.startsWith(cy+"-"))) state.cy = cy;
+  const cm = q.get("cm"); if(cm==="all" || M.includes(cm)) state.cm = cm;
+  const cc = q.get("cc"); if(TOP[cc]) state.ccat = cc;
   return true;
 }
 function stateHash(){
@@ -402,6 +431,7 @@ function stateHash(){
   if(state.tab==="month") q.m = state.month;
   if(state.tab==="steady") q.c = state.cat;
   if(state.tab==="season") Object.assign(q, {sea: SEA_CODE[state.sea || nextSeason()], sy: state.sy || "all", rc: state.rcat});
+  if(state.tab==="color"){ const p = clPeriod(); Object.assign(q, {cy: p.cy, cm: p.cm, cc: state.ccat}); }
   return "#" + state.tab + "?" + new URLSearchParams(q).toString();
 }
 readHash();
@@ -441,6 +471,7 @@ document.addEventListener("click", e=>{
   const se = e.target.closest("[data-sea]"); if(se){ state.sea=se.dataset.sea; render(); return; }
   const sy = e.target.closest("[data-sy]"); if(sy){ state.sy=sy.dataset.sy; render(); return; }
   const rc = e.target.closest("[data-rcat]"); if(rc){ state.rcat=rc.dataset.rcat; render(); return; }
+  const cc = e.target.closest("[data-ccat]"); if(cc){ state.ccat=cc.dataset.ccat; render(); return; }
   const mv = e.target.closest("[data-mstep]"); if(mv){ const i=M.indexOf(state.month)+(+mv.dataset.mstep); if(i>=0&&i<M.length){state.month=M[i]; render();} return; }
   const b = e.target.closest("[data-browse]"); if(b){ state.bcat=b.dataset.browse; go("browse"); return; }
   const bm = e.target.closest("[data-bmore]"); if(bm){ // 펼치기/접기 후 그 달 제목이 화면에서 같은 자리에 오게
@@ -458,6 +489,10 @@ document.addEventListener("change", e=>{
     const y = e.target.value, same = `${y}-${state.month.slice(5)}`;
     state.month = M.includes(same) ? same : M.filter(m=>m.startsWith(y)).pop(); render(); }
   if(e.target.id==="bcat"){ state.bcat=e.target.value; render(); }
+  if(e.target.id==="cyear"){ // 컬러 분포: 같은 달이 그해에 있으면 그 달, 없으면 그해 전체
+    state.cy = e.target.value; const same = `${state.cy}-${(state.cm||"").slice(5)}`;
+    state.cm = state.cy!=="all" && state.cm && state.cm!=="all" && M.includes(same) ? same : "all"; render(); }
+  if(e.target.id==="cmonth"){ state.cm=e.target.value; render(); }
 });
 function go(tab){ state.tab=tab; chrome(); render(); window.scrollTo({top:0}); }
 // 주소창에 링크를 붙여 넣어 바로 열 때(페이지가 이미 열린 상태)도 그 화면으로
@@ -473,7 +508,7 @@ document.addEventListener("mouseleave", ()=>tip.hidden=true);
 /* ---------- views ---------- */
 function render(){
   const app = document.getElementById("app");
-  const v = {summary, steady, season, month, brand, browse}[state.tab]();
+  const v = {summary, steady, season, month, brand, browse, color}[state.tab]();
   app.innerHTML = `<section class="view">${v}</section>`;
   try{ history.replaceState(null, "", stateHash()); }catch(_){}
 }
@@ -838,6 +873,94 @@ function browse(){
     <div>${yearMonths.map(m=>`<div class="mhead" id="bm-${m}"><h3>${ymLabel(m)}</h3><button type="button" class="linkbtn" data-gomonth="${m}">이 달 배경 보기 ›</button></div>${rankTable(m, state.bmore.has(m) ? null : 10)}`).join("")}</div>`
     : rankTable(ym)}
   </div>`;
+}
+
+/* ---------- 컬러 분포 (2026-10-19 사장님 요청: 카테고리별로 나눠서). 상품명에 적힌 색 이름만 셈, 스포츠·운동복 제외 ---------- */
+// 색 이름은 tools/attribute_keywords.json의 color 그룹과 같아야 함. 견본 색은 옷 색 그대로라 밝은·어두운 화면 공통
+const CL_SWATCH = {"블랙":"#1b1b1b","화이트":"#ffffff","아이보리/크림":"#efe7d3","그레이/차콜":"#8b8f94","네이비":"#1f2b4f","블루/인디고":"#3f6fb5","브라운/카멜":"#8b5a36","베이지/샌드":"#d6c19c","카키/올리브":"#6f6d3c","그린/민트":"#4c9a6c","레드/버건디":"#a3262f","핑크":"#eaa2b6","퍼플/라벤더":"#9a86c9","옐로우/머스타드":"#e1b53a","오렌지":"#e07a35"};
+const CL_ORDER = Object.keys(CL_SWATCH);
+const CL_MULTI = /(\d+)\s*(?:colou?rs?|컬러|색상|색)(?![a-z가-힣])/i;  // '_7color', '5 COLOR', '5컬러' = 여러 색 상품
+const clSw = c => `<i class="cl-sw" style="background:${CL_SWATCH[c]||"var(--axis)"}" aria-hidden="true"></i>`;
+const clShort = c => c.split("/")[0];
+function clPeriod(){ // 연도(전체 기간·해마다) + 달(전체·한 달). 비교 = 1년 전 같은 달(들), 모두 있을 때만
+  const years = [...new Set(M.map(m=>m.slice(0,4)))];
+  const cy = state.cy==="all" || years.includes(state.cy) ? state.cy : years[years.length-1];
+  const ms = cy==="all" ? M : M.filter(m=>m.startsWith(cy));
+  const cm = cy!=="all" && ms.includes(state.cm) ? state.cm : "all";
+  const now = cm!=="all" ? [cm] : ms;
+  const before = cy==="all" ? [] : now.map(m=>`${+m.slice(0,4)-1}${m.slice(4)}`);
+  const cmp = before.length && before.every(m=>M.includes(m)) ? before : null;
+  const label = cy==="all" ? `전체 기간(${ymShort(M[0])}~${ymShort(M[M.length-1])})` : cm!=="all" ? ymLabel(cm) : ms.length===12 ? `${cy}년` : `${cy}년 ${+ms[0].slice(5)}~${+ms[ms.length-1].slice(5)}월`;
+  return {years, cy, cm, ms, now, cmp, label, cmpWord: cm!=="all" ? "작년 같은 달" : "작년 같은 기간"};
+}
+// 한 순위표(code)의 그 달들 TOP 30을 색으로 나눔. 한 달에 한 자리, 색이 둘이면 반 자리씩. share = 색이 적힌 자리 중 비율
+function clDist(code, months){
+  const w = {}, ex = {}, nColors = []; let tot = 0, named = 0, multi = 0;
+  months.forEach(m=>(((G().top[code]||{})[m])||[]).forEach(id=>{
+    const q = P(id); if(q.sp) return; tot++;
+    const cs = (q.k||{}).color || [];
+    if(cs.length){ named++; cs.forEach(c=>{ w[c]=(w[c]||0)+1/cs.length; (ex[c]=ex[c]||{})[id]=(ex[c][id]||0)+1; }); }
+    else { const mm = (q.n||"").match(CL_MULTI); if(mm && +mm[1]>1 && +mm[1]<=30){ multi++; nColors.push(+mm[1]); } }
+  }));
+  const share = {}; Object.entries(w).forEach(([c,v])=>share[c]=v/named);
+  return {share, w, ex, tot, named, multi, avgColors: nColors.length ? mean(nColors) : null};
+}
+function clCard(cat, name, p){
+  const d = clDist(cat, p.now), prev = p.cmp ? clDist(cat, p.cmp) : null;
+  if(!d.named) return `<div class="bgroup"><h3>${name}</h3><p class="empty">이 기간 자료가 없습니다.</p></div>`;
+  const rows = Object.entries(d.share).filter(([,v])=>v>=0.005).sort((a,b)=>b[1]-a[1]);
+  const max = rows[0][1];
+  const useCmp = prev && prev.named >= 10;
+  return `<div class="bgroup"><h3>${name}</h3>
+    <p class="cl-cover">색이 적힌 <b>${d.named.toLocaleString()}</b>자리 기준 (TOP 30 ${d.tot.toLocaleString()}자리 중 ${Math.round(d.named/d.tot*100)}%)</p>
+    ${rows.map(([c,v])=>{
+      const pv = useCmp ? (prev.share[c]||0) : null, dd = pv==null ? null : (v-pv)*100;
+      const dTxt = dd==null ? "<span></span>" : Math.abs(dd) < 1 ? `<span class="dl">–</span>` : `<span class="dl ${dd>0?"up":"down"}">${dd>0?"▲":"▼"}${Math.abs(dd).toFixed(0)}%p</span>`;
+      const tops = Object.entries(d.ex[c]||{}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id])=>`${esc(P(id).b)} ${esc(P(id).n)}`);
+      const tip = `<b>${esc(c)} ${Math.round(v*100)}%</b> (${(Math.round(d.w[c]*10)/10)}자리)${pv!=null?` · ${p.cmpWord} ${Math.round(pv*100)}%`:""}${tops.length?`<br>${tops.join("<br>")}`:""}`;
+      return `<div class="cl-row" data-tip="${esc(tip)}">${clSw(c)}<span class="cl-name">${esc(c)}</span><span class="cl-bar"><i style="width:${Math.max(1.5, v/max*100).toFixed(1)}%"></i>${pv!=null?`<b style="left:${Math.min(100, pv/max*100).toFixed(1)}%" aria-hidden="true"></b>`:""}</span><span class="cl-val">${Math.round(v*100)}%</span>${dTxt}</div>`;
+    }).join("")}
+    <p class="bfoot">${useCmp?`막대 = ${esc(p.label)}, 세로 선 = ${p.cmpWord}. `:""}${d.multi?`색을 알 수 없는 '여러 색' 상품 ${d.multi}자리${d.avgColors?`(평균 ${d.avgColors.toFixed(1)}색 출시)`:""}는 뺐습니다.`:""}</p>
+  </div>`;
+}
+function clSubBlock(p){
+  const cats = topCats(); if(!cats.some(([c])=>c===state.ccat)) state.ccat = cats[0][0];
+  const cat = state.ccat, comp = (G().composition[cat]||{}).by_month || {};
+  const idx = p.now.map(m=>M.indexOf(m));
+  const subs = Object.entries(D.categories).filter(([,c])=>c.parent===cat).map(([code,c])=>{
+    const d = clDist(code, p.now);
+    return {code, name: c.name, d, place: mean(idx.map(i=>(comp[c.name]||[])[i]||0))};
+  }).filter(s=>s.d.named >= 5).sort((a,b)=>b.place-a.place || b.d.named-a.d.named);
+  const used = CL_ORDER.filter(c=>subs.some(s=>(s.d.share[c]||0) >= 0.005));
+  return `
+  <div class="block">
+    <div><div class="eyebrow">세부 카테고리 · ${GEN[state.g]} · ${esc(p.label)}</div><h2>세부 카테고리별 컬러</h2><p class="lede">세부 카테고리마다 그 순위표 TOP 30을 색으로 나눴습니다. 대분류 TOP 30에서 자리를 많이 차지한 종류부터 보입니다.</p></div>
+    <div class="chips" aria-label="대분류">${cats.map(([k,v])=>`<button type="button" data-ccat="${k}" aria-pressed="${cat===k}">${v}</button>`).join("")}</div>
+    ${subs.length ? `<div class="cl-legend" aria-label="색 구분">${used.map(c=>`<span>${clSw(c)}${esc(c)}</span>`).join("")}</div>
+    <div class="cz-card">${subs.map(s=>{
+      const segs = CL_ORDER.filter(c=>(s.d.share[c]||0) >= 0.005);
+      const top3 = Object.entries(s.d.share).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      return `<div class="cl-sub">
+        <div class="cl-sub-name">${esc(s.name)}<small>색이 적힌 ${Math.round(s.d.named)}자리 기준</small></div>
+        <div class="cl-stack" role="img" aria-label="${esc(s.name)} 컬러 비율: ${top3.map(([c,v])=>`${c} ${Math.round(v*100)}%`).join(", ")}">${segs.map(c=>`<i style="flex:${s.d.share[c].toFixed(4)} 1 0;background:${CL_SWATCH[c]}" data-tip="${esc(`<b>${esc(s.name)}</b> · ${esc(c)} ${Math.round(s.d.share[c]*100)}%`)}"></i>`).join("")}</div>
+        <div class="cl-top">${top3.map(([c,v],k)=>`<span>${clSw(c)}${k===0?"<b>":""}${esc(clShort(c))} ${Math.round(v*100)}%${k===0?"</b>":""}</span>`).join("")}</div>
+      </div>`;}).join("")}
+      <p class="bfoot">막대 길이 = 그 색 비율. 색 순서는 모든 줄이 같습니다(무채색 → 유채색). 색이 적힌 상품이 5자리 미만인 세부 카테고리는 뺐습니다.</p>
+    </div>` : `<p class="empty">이 기간 자료가 없습니다.</p>`}
+  </div>`;
+}
+function color(){
+  const p = clPeriod();
+  return `
+  <div class="block">
+    <div><div class="eyebrow">컬러 · ${GEN[state.g]} · ${esc(p.label)}</div><h2>카테고리별 컬러 분포</h2><p class="lede">대분류 TOP 30에 오른 옷을 상품명에 적힌 색으로 나눴습니다.</p><details class="how-box"><summary>계산 방법 보기</summary><p>무신사 랭킹의 상품명에서 색 이름(블랙, 네이비, [크림화이트] 등)을 찾아 15가지 색으로 묶었습니다. 한 상품이 여러 달 TOP 30에 들면 달마다 한 자리로 세고, 이름에 색이 둘이면(예: 블랙/화이트) 반 자리씩 나눴습니다.</p><p>'5color'처럼 여러 색으로 나온 상품과 색이 적히지 않은 상품은 비율에서 뺐습니다. 랭킹에 올라온 대표 색 기준이라 실제 판매된 색 비율과는 다를 수 있습니다. 스포츠·아웃도어 브랜드와 운동복은 뺐습니다. 비교는 1년 전 같은 달(들)과 합니다.</p></details></div>
+    <div class="filters">
+      <label class="bw-field">연도<select id="cyear"><option value="all" ${p.cy==="all"?"selected":""}>전체 기간</option>${p.years.map(y=>`<option value="${y}" ${p.cy===y?"selected":""}>${y}년</option>`).join("")}</select></label>
+      ${p.cy==="all"?"":`<label class="bw-field">달<select id="cmonth"><option value="all" ${p.cm==="all"?"selected":""}>전체</option>${p.ms.map(m=>`<option value="${m}" ${p.cm===m?"selected":""}>${+m.slice(5)}월</option>`).join("")}</select></label>`}
+    </div>
+    <div class="bgrid two">${topCats().map(([cat,name])=>clCard(cat, name, p)).join("")}</div>
+  </div>
+  ${clSubBlock(p)}`;
 }
 
 chrome(); render();
