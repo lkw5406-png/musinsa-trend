@@ -267,7 +267,8 @@ def main() -> int:
             for q in a.args:
                 print(f"\n=== {q}\n" + "\n".join(run(q, a.recent)), flush=True)
         else:
-            print("\n".join(run(a.args[0], a.args[1:])))
+            # 키워드 자리의 공백(" ")은 '설명란 전체' 뜻 → 빈 키워드로 바꿈(공백 없는 줄이 빠지던 문제)
+            print("\n".join(run(a.args[0], [k.strip() for k in a.args[1:] if k.strip()])))
     except Exception as exc:  # 막히면 멈추고 알림 — 억지로 재시도하지 않음
         print(f"조회 실패: {exc} — 웹 검색(WebSearch)으로 대신 조사")
         return 1
