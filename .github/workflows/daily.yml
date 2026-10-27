@@ -22,13 +22,28 @@ jobs:
     timeout-minutes: 300   # 월요일·1일(주간·월간 리포트가 겹치는 날)과 새 상품이 많은 날 대비
     # 실패 알림: 이 작업이 실패하면 GitHub이 저장소 주인 계정 이메일로 자동 알림을 보냄 (별도 메일 설정 없음)
     steps:
+      # 재확인(12시·20시)이 GitHub 사정으로 밀려 다음 날 새벽 5시 전에 돌면, 무신사 갱신(04:45) 전이라 어제 랭킹을
+      # 오늘 날짜로 저장하고 루틴까지 불렀음(10/5·10/23·10/24·10/27·10/28 재발) → 그 시간대 재확인은 아무것도 안 하고 끝냄
+      # (2026-10-28 사장님 결정. 06시 본 실행은 그대로)
+      - name: 새벽 5시 전 재확인은 건너뛰기
+        id: gate
+        run: |
+          H=$(TZ=Asia/Seoul date +%H)
+          if [ "${{ github.event.schedule }}" != "0 21 * * *" ] && [ "$H" -lt 5 ]; then
+            echo "KST ${H}시 — 무신사 랭킹 갱신(04:45) 전이라 건너뜀 (06시 본 실행이 받음)"
+            echo "skip=yes" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.skip != 'yes'
 
       - uses: actions/setup-python@v5
+        if: steps.gate.outputs.skip != 'yes'
         with:
           python-version: "3.12"
 
       - name: 수집 · 분석 · 리포트 생성
+        if: steps.gate.outputs.skip != 'yes'
         run: |
           if [ "${{ github.event.schedule }}" = "0 21 * * *" ]; then
             python tools/run_daily.py
@@ -38,7 +53,7 @@ jobs:
 
       - name: 기록과 리포트 저장(push)
         id: save
-        if: always()   # 도중에 멈춰도 받은 상세정보는 저장
+        if: always() && steps.gate.outputs.skip != 'yes'   # 도중에 멈춰도 받은 상세정보는 저장
         run: |
           git config user.name "musinsa-report-bot"
           git config user.email "actions@users.noreply.github.com"
